@@ -2624,100 +2624,36 @@ const importConseillersTerritoriaux = async () => {
               <p className="hero-subtitle">
                 La plateforme citoyenne pour évaluer et communiquer avec vos élus en Guyane française
               </p>
-              <div className="hero-stats" style={{
-                display: 'flex',
-                justifyContent: 'center',
-                gap: '2rem',
-                flexWrap: 'wrap',
-                marginTop: '2rem'
-              }}>
-                <div className="stat-item" style={{ textAlign: 'center' }}>
-                  <span className="stat-number" style={{ 
-                    fontSize: '2.5rem', 
-                    fontWeight: 'bold', 
-                    color: '#3b82f6',
-                    display: 'block'
-                  }}>22</span>
-                  <span className="stat-label" style={{ 
-                    color: '#94a3b8', 
-                    fontSize: '1rem' 
-                  }}>Communes</span>
-                </div>
-                <div className="stat-item" style={{ textAlign: 'center' }}>
-                  <span className="stat-number" style={{ 
-                    fontSize: '2.5rem', 
-                    fontWeight: 'bold', 
-                    color: '#3b82f6',
-                    display: 'block'
-                  }}>55+</span>
-                  <span className="stat-label" style={{ 
-                    color: '#94a3b8', 
-                    fontSize: '1rem' 
-                  }}>Élus</span>
-                </div>
-                <div className="stat-item" style={{ textAlign: 'center' }}>
-                  <span className="stat-number" style={{ 
-                    fontSize: '2.5rem', 
-                    fontWeight: 'bold', 
-                    color: '#3b82f6',
-                    display: 'block'
-                  }}>1k+</span>
-                  <span className="stat-label" style={{ 
-                    color: '#94a3b8', 
-                    fontSize: '1rem' 
-                  }}>Citoyens</span>
-                </div>
-              </div>
             </div>
           </div>
         </div>
 
-        {/* Navigation Tabs - AMÉLIORÉE POUR MOBILE */}
-        <div style={{
-          backgroundColor: '#1e293b',
-          borderBottom: '1px solid #334155',
-          padding: '0 1rem',
-          overflowX: 'auto'
-        }}>
-          <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <div style={{
-              display: 'flex',
-              gap: '0',
-              minWidth: 'fit-content'
-            }}>
-              {[
-                { id: 'communes', name: '🏛️ Communes', desc: '22 communes', count: communes.length },
-                { id: 'deputes', name: '🗳️ Députés', desc: '2 députés', count: deputes.length },
-                { id: 'senateurs', name: '⚖️ Sénateurs', desc: '2 sénateurs', count: senateurs.length },
-                { id: 'conseillers', name: '🌐 CTG', desc: '51 conseillers', count: conseillers.length }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setCurrentTab(tab.id)}
-                  style={{
-                    padding: '1rem 1.5rem',
-                    backgroundColor: currentTab === tab.id ? '#3b82f6' : 'transparent',
-                    color: currentTab === tab.id ? 'white' : '#94a3b8',
-                    border: 'none',
-                    borderBottom: currentTab === tab.id ? '3px solid #3b82f6' : '3px solid transparent',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s',
-                    minWidth: '140px',
-                    textAlign: 'center',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  <div style={{ fontWeight: 'bold', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
-                    {tab.name}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>
-                    {tab.count > 0 ? `${tab.count} ${tab.id === 'communes' ? 'communes' : tab.id === 'deputes' ? 'députés' : tab.id === 'senateurs' ? 'sénateurs' : 'conseillers'}` : tab.desc}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
+        {/* Barre de statistiques compacte */}
+        <div className="stats-bar">
+          <div className="stat"><span className="stat-number">22</span> <span>Communes</span></div>
+          <div className="stat"><span className="stat-number">55+</span> <span>Élus</span></div>
+          <div className="stat"><span className="stat-number">1k+</span> <span>Citoyens</span></div>
         </div>
+
+        {/* Menu de navigation en bulles */}
+        <nav className="menu-bubble-bar">
+          <button className={`menu-bubble${currentTab === 'communes' ? ' active' : ''}`} onClick={() => setCurrentTab('communes')}>
+            <span className="bubble-icon">🏛️</span>
+            Communes
+          </button>
+          <button className={`menu-bubble${currentTab === 'deputes' ? ' active' : ''}`} onClick={() => setCurrentTab('deputes')}>
+            <span className="bubble-icon">🗳️</span>
+            Députés
+          </button>
+          <button className={`menu-bubble${currentTab === 'senateurs' ? ' active' : ''}`} onClick={() => setCurrentTab('senateurs')}>
+            <span className="bubble-icon">⚖️</span>
+            Sénateurs
+          </button>
+          <button className={`menu-bubble${currentTab === 'conseillers' ? ' active' : ''}`} onClick={() => setCurrentTab('conseillers')}>
+            <span className="bubble-icon">🌐</span>
+            CTG
+          </button>
+        </nav>
 
         {/* Contenu selon l'onglet sélectionné */}
         <div className="content-section">
@@ -2745,7 +2681,7 @@ const importConseillersTerritoriaux = async () => {
                     }} />
                     <input
                       type="text"
-                      placeholder="Rechercher une commune en Guyane..."
+                      placeholder="Rechercher un élu ou une commune..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       style={{
@@ -2777,8 +2713,9 @@ const importConseillersTerritoriaux = async () => {
                   gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
                   gap: '1.5rem'
                 }}>
+                  {/* Afficher les communes qui correspondent */}
                   {communes
-                    .filter(commune => 
+                    .filter(commune =>
                       commune.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                       (commune.description && commune.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
                       (commune.region && commune.region.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -2832,6 +2769,53 @@ const importConseillersTerritoriaux = async () => {
                         </div>
                       </div>
                     ))}
+                  {/* Afficher les élus qui correspondent au nom */}
+                  {elus
+                    .filter(elu =>
+                      searchTerm.length > 0 &&
+                      elu.name.toLowerCase().includes(searchTerm.toLowerCase())
+                    )
+                    .map((elu) => (
+                      <div
+                        key={elu.id}
+                        className="commune-card-modern"
+                        style={{
+                          backgroundColor: '#1e293b',
+                          border: '1px solid #334155',
+                          borderRadius: '12px',
+                          padding: '1.5rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '1rem'
+                        }}
+                        onClick={() => {
+                          setSelectedElu(elu);
+                          setCurrentScreen('profil');
+                        }}
+                      >
+                        <div className="commune-icon" style={{
+                          backgroundColor: '#3b82f6',
+                          borderRadius: '12px',
+                          padding: '1rem',
+                          color: 'white'
+                        }}>
+                          <Users size={24} />
+                        </div>
+                        <div className="commune-info" style={{flex: 1}}>
+                          <h3 style={{color: '#e2e8f0', marginBottom: '0.5rem', fontSize: '1.1rem', fontWeight: '600'}}>
+                            {elu.name}
+                          </h3>
+                          <p className="commune-description" style={{color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem'}}>
+                            {elu.poste} {elu.commune ? `- ${elu.commune}` : ''}
+                          </p>
+                        </div>
+                        <div className="commune-arrow" style={{color: '#94a3b8'}}>
+                          <ChevronDown size={20} />
+                        </div>
+                      </div>
+                    ))}
                 </div>
               </>
             )}{currentTab === 'deputes' && (
@@ -2843,7 +2827,6 @@ const importConseillersTerritoriaux = async () => {
                   padding: '2rem',
                   marginBottom: '2rem'
                 }}>
-                  // ...
                   <h2 style={{color: '#e2e8f0', marginBottom: '1rem'}}>🗳️ Députés de la Guyane</h2>
                   <p style={{color: '#94a3b8', fontSize: '0.875rem'}}>
                     Les 2 députés représentent la Guyane à l'Assemblée nationale
@@ -2966,7 +2949,6 @@ const importConseillersTerritoriaux = async () => {
                   padding: '2rem',
                   marginBottom: '2rem'
                 }}>
-                  // ...
                   <h2 style={{color: '#e2e8f0', marginBottom: '1rem'}}>⚖️ Sénateurs de la Guyane</h2>
                   <p style={{color: '#94a3b8', fontSize: '0.875rem'}}>
                     Les 2 sénateurs représentent la Guyane au Sénat
@@ -3093,7 +3075,6 @@ const importConseillersTerritoriaux = async () => {
                   padding: '2rem',
                   marginBottom: '2rem'
                 }}>
-                  // ...
                   <h2 style={{color: '#e2e8f0', marginBottom: '1rem'}}>🌐 Conseillers Territoriaux de Guyane</h2>
                   <p style={{color: '#94a3b8', fontSize: '0.875rem'}}>
                     L'Assemblée de Guyane compte 51 conseillers territoriaux
@@ -3891,85 +3872,41 @@ const importConseillersTerritoriaux = async () => {
                 </div>
               </div>
             </div>{/* Questions et avis */}
-            <div className="questions-section-modern" style={{marginBottom: '2rem'}}>
-              <div className="section-header-modern" style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '1.5rem'
-              }}>
-                <h3 style={{color: '#e2e8f0', fontSize: '1.5rem', fontWeight: '600', margin: 0}}>
-                  💬 Questions et avis populaires
-                </h3>
-                {avisElu.length > 3 && (
-                  <button className="see-all-btn-modern" style={{
-                    backgroundColor: 'transparent',
-                    color: '#3b82f6',
-                    border: '1px solid #3b82f6',
-                    padding: '0.5rem 1rem',
-                    borderRadius: '20px',
-                    cursor: 'pointer',
-                    fontSize: '0.875rem'
-                  }}>
-                    Voir tout ({avisElu.length})
-                  </button>
-                )}
+            <div className="avis-section">
+              <div className="avis-section-header">
+                <h2>💬 Avis & Questions des citoyens</h2>
+                <button className="btn-main" onClick={() => { setMessageType('avis'); setCurrentScreen('message'); }}>
+                  Laisser un avis
+                </button>
               </div>
-              
-              {avisElu.length > 0 ? (
-                <div className="questions-list-modern">
-                  {avisElu.slice(0, 5).map((question) => (
-                    <QuestionCard 
-                      key={question.id} 
-                      question={question} 
-                      onLike={handleLike}
-                    />
-                  ))}
+              {avisElu.length === 0 ? (
+                <div className="avis-empty">
+                  <MessageCircle size={48} style={{marginBottom: '1rem'}} />
+                  <p>Soyez le premier à donner votre avis sur cet élu !</p>
                 </div>
               ) : (
-                <div className="empty-questions-modern" style={{
-                  textAlign: 'center',
-                  padding: '3rem',
-                  backgroundColor: '#1e293b',
-                  borderRadius: '12px',
-                  border: '1px solid #334155'
-                }}>
-                  <div style={{
-                    backgroundColor: '#374151',
-                    borderRadius: '50%',
-                    padding: '1.5rem',
-                    display: 'inline-block',
-                    marginBottom: '1rem',
-                    color: '#9ca3af'
-                  }}>
-                    <MessageCircle size={48} />
+                avisElu.slice(0, 5).map((avis) => (
+                  <div className="avis-card" key={avis.id}>
+                    <div className="avis-avatar">
+                      {avis.author && avis.author !== 'Anonyme' ? avis.author[0].toUpperCase() : <Users size={24} />}
+                    </div>
+                    <div className="avis-content">
+                      <div className="avis-header">
+                        <span className="avis-author">{avis.author}</span>
+                        <span className="avis-date">{avis.timestamp}</span>
+                        <span className={`avis-badge${avis.type === 'question' ? ' question' : ''}`}>
+                          {avis.type === 'avis' ? 'Avis public' : 'Question privée'}
+                        </span>
+                      </div>
+                      <div className="avis-text">{avis.text}</div>
+                      <div className="avis-actions">
+                        <button className="avis-like" onClick={() => handleLike(avis.id)}>
+                          <ThumbsUp size={16} /> {avis.likes}
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <h4 style={{color: '#e2e8f0', marginBottom: '0.5rem', fontSize: '1.2rem'}}>
-                    Aucune question pour l'instant
-                  </h4>
-                  <p style={{color: '#94a3b8', fontSize: '0.875rem'}}>
-                    Soyez le premier à poser une question ou laisser un avis !
-                  </p>
-                </div>
-              )}
-
-              {/* Message de confirmation après ajout d'avis */}
-              {avisLocaux.filter(avis => avis.eluId === selectedElu?.id).length > 0 && (
-                <div style={{
-                  textAlign: 'center',
-                  padding: '1.5rem',
-                  backgroundColor: '#059669',
-                  borderRadius: '12px',
-                  marginTop: '1rem'
-                }}>
-                  <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🎉</div>
-                  <h4 style={{ color: 'white', marginBottom: '0.25rem', fontSize: '1.1rem' }}>
-                    Votre avis a été ajouté !
-                  </h4>
-                  <p style={{ color: '#d1fae5', fontSize: '0.875rem', margin: 0 }}>
-                    Merci pour votre contribution citoyenne
-                  </p>
-                </div>
+                ))
               )}
             </div>
 
