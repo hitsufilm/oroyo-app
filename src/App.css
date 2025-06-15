@@ -1221,25 +1221,54 @@
 
 .postes-grid-modern {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
+  padding: 1rem 0;
 }
 
 .poste-card-modern {
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 1rem;
-  padding: 1.5rem;
+  background: #1e293b;
+  border: 2px solid #334155;
+  border-radius: 16px;
+  padding: 2rem;
   cursor: pointer;
   transition: all 0.3s ease;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  backdrop-filter: blur(20px);
+  text-align: center;
+  min-height: 200px;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
 }
 
 .poste-card-modern:hover {
   transform: translateY(-4px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  border-color: #475569;
+}
+
+.poste-card-modern:active {
+  transform: translateY(-2px);
+}
+
+.poste-icon-wrapper {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.poste-icon-wrapper svg {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
 }
 
 .poste-icon-modern {
@@ -1683,6 +1712,60 @@
   
   .form-actions-modern {
     flex-direction: column;
+  }
+
+  /* Styles responsive pour les postes */
+  .postes-grid-modern {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    padding: 0.5rem 0;
+  }
+  
+  .poste-card-modern {
+    padding: 1.5rem;
+    min-height: 180px;
+  }
+  
+  .poste-icon-wrapper {
+    width: 70px;
+    height: 70px;
+    margin-bottom: 0.75rem;
+  }
+  
+  .poste-icon-wrapper svg {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .poste-card-modern h3 {
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .postes-grid-modern {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .poste-card-modern {
+    padding: 1.25rem;
+    min-height: 160px;
+  }
+  
+  .poste-icon-wrapper {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 0.5rem;
+  }
+  
+  .poste-icon-wrapper svg {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .poste-card-modern h3 {
+    font-size: 1rem;
   }
 }
 /* === STYLES COMMUNES AMÉLIORÉES === */
