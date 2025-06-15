@@ -1,8 +1,72 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ChevronDown, Users, ArrowLeft, Star, MessageCircle, Send, ThumbsUp, MapPin, Download, UserPlus } from 'lucide-react';
+import { Search, ChevronDown, Users, ArrowLeft, Star, MessageCircle, Send, ThumbsUp, MapPin, Download, UserPlus, Home, Building, Crown, Globe2, Scale, Vote, UserCheck } from 'lucide-react';
 import { db } from './firebase';
 import { collection, getDocs, setDoc, doc } from 'firebase/firestore';
-import './App.css';
+import './AppModern.css';
+
+// Header Component
+const Header = ({ title, subtitle, currentScreen, setCurrentScreen, setCurrentTab }) => {
+  return (
+    <>
+      <div className="header-modern">
+        <div className="container">
+          <div className="header-nav">
+            <div className="header-left">
+              <button 
+                onClick={() => setCurrentScreen('home')} 
+                className="btn-back-modern"
+              >
+                <ArrowLeft size={20} />
+                Retour
+              </button>
+              <div className="header-info">
+                <h1 className="header-title">{title}</h1>
+                <p className="header-subtitle">{subtitle}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <nav className="mini-nav">
+        <button 
+          className={`mini-nav-item ${currentScreen === 'communes' ? 'active' : ''}`}
+          onClick={() => {
+            setCurrentScreen('communes');
+            setCurrentTab('communes');
+          }}
+          data-tooltip="Communes"
+        >
+          <Building className="mini-nav-icon" />
+          <div className="tooltip">Communes</div>
+        </button>
+        <button 
+          className={`mini-nav-item ${currentScreen === 'deputes' ? 'active' : ''}`}
+          onClick={() => setCurrentScreen('deputes')}
+          data-tooltip="Députés"
+        >
+          <Vote className="mini-nav-icon" />
+          <div className="tooltip">Députés</div>
+        </button>
+        <button 
+          className={`mini-nav-item ${currentScreen === 'senateurs' ? 'active' : ''}`}
+          onClick={() => setCurrentScreen('senateurs')}
+          data-tooltip="Sénateurs"
+        >
+          <Scale className="mini-nav-icon" />
+          <div className="tooltip">Sénateurs</div>
+        </button>
+        <button 
+          className={`mini-nav-item ${currentScreen === 'ctg' ? 'active' : ''}`}
+          onClick={() => setCurrentScreen('ctg')}
+          data-tooltip="CTG"
+        >
+          <Globe2 className="mini-nav-icon" />
+          <div className="tooltip">CTG</div>
+        </button>
+      </nav>
+    </>
+  );
+};
 
 function App() {
   const [currentTab, setCurrentTab] = useState('communes');
@@ -807,9 +871,9 @@ function App() {
     { 
       id: 'marie-laure-phinera-horth-maire', 
       name: 'Marie-Laure Phinéra-Horth', 
-      commune: 'Cayenne', 
-      poste: 'Maire', 
-      status: 'actuel', 
+      commune: 'Cayenne',
+      poste: 'Maire',
+      status: 'actuel',
       rating: 4.1, 
       totalVotes: 189, 
       parti: 'RDPI', 
@@ -2522,23 +2586,24 @@ const importConseillersTerritoriaux = async () => {
     const [hoverRating, setHoverRating] = useState(0);
     
     return (
-      <div style={{ display: 'flex', gap: '4px' }}>
+      <div className="star-rating-container">
         {[1, 2, 3, 4, 5].map((star) => {
           const isActive = star <= (hoverRating || rating);
           return (
-            <Star
-              key={star}
+          <Star
+            key={star}
               size={20}
+              className={`star ${isActive ? 'active' : ''}`}
               style={{
                 cursor: interactive ? 'pointer' : 'default',
                 color: isActive ? '#fbbf24' : '#d1d5db',
                 fill: isActive ? '#fbbf24' : 'none',
                 transition: 'all 0.2s'
               }}
-              onClick={interactive ? () => onRate(star) : undefined}
-              onMouseEnter={interactive ? () => setHoverRating(star) : undefined}
-              onMouseLeave={interactive ? () => setHoverRating(0) : undefined}
-            />
+            onClick={interactive ? () => onRate(star) : undefined}
+            onMouseEnter={interactive ? () => setHoverRating(star) : undefined}
+            onMouseLeave={interactive ? () => setHoverRating(0) : undefined}
+          />
           );
         })}
       </div>
@@ -2578,7 +2643,7 @@ const importConseillersTerritoriaux = async () => {
           {question.timestamp && (
             <span style={{ marginLeft: '0.5rem' }}>• {question.timestamp}</span>
           )}
-        </div>
+      </div>
       </div>
       <p className="question-text" style={{
         color: '#e2e8f0',
@@ -2611,46 +2676,80 @@ const importConseillersTerritoriaux = async () => {
   );
 
   // ÉCRAN HOME MODERNE
-  if (currentScreen === 'home') {
+  if (currentScreen === 'home' || currentScreen === 'communes') {
     return (
       <div className="app-modern">
         {/* Hero Section */}
         <div className="hero-section">
           <div className="hero-content">
-            <div className="hero-text">
-              <h1 className="hero-title">
-                <span className="gradient-text">Oroyo</span>
-              </h1>
-              <p className="hero-subtitle">
-                La plateforme citoyenne pour évaluer et communiquer avec vos élus en Guyane française
-              </p>
-            </div>
+            <h1 className="hero-title">
+              <span className="gradient-text">Oroyo</span>
+            </h1>
+            <p className="hero-subtitle">
+              La plateforme citoyenne pour évaluer et communiquer avec vos élus en Guyane française
+            </p>
           </div>
         </div>
 
-        {/* Barre de statistiques compacte */}
+        {/* Barre de statistiques */}
         <div className="stats-bar">
-          <div className="stat"><span className="stat-number">22</span> <span>Communes</span></div>
-          <div className="stat"><span className="stat-number">55+</span> <span>Élus</span></div>
-          <div className="stat"><span className="stat-number">1k+</span> <span>Citoyens</span></div>
+          <div className="stat">
+            <span className="stat-number">22</span>
+            <span>Communes</span>
+          </div>
+          <div className="stat">
+            <span className="stat-number">55+</span>
+            <span>Élus</span>
+          </div>
+          <div className="stat">
+            <span className="stat-number">1k+</span>
+            <span>Citoyens</span>
+          </div>
         </div>
 
         {/* Menu de navigation en bulles */}
         <nav className="menu-bubble-bar">
-          <button className={`menu-bubble${currentTab === 'communes' ? ' active' : ''}`} onClick={() => setCurrentTab('communes')}>
-            <span className="bubble-icon">🏛️</span>
+          <button 
+            className={`menu-bubble ${currentScreen === 'communes' ? 'active' : ''}`}
+            onClick={() => {
+              setCurrentScreen('communes');
+              setCurrentTab('communes');
+            }}
+            data-type="communes"
+          >
+            <div className="bubble-icon-wrapper">
+              <Building className="bubble-icon" />
+            </div>
             Communes
           </button>
-          <button className={`menu-bubble${currentTab === 'deputes' ? ' active' : ''}`} onClick={() => setCurrentTab('deputes')}>
-            <span className="bubble-icon">🗳️</span>
+          <button 
+            className={`menu-bubble ${currentScreen === 'deputes' ? 'active' : ''}`}
+            onClick={() => setCurrentScreen('deputes')}
+            data-type="deputes"
+          >
+            <div className="bubble-icon-wrapper">
+              <Vote className="bubble-icon" />
+            </div>
             Députés
           </button>
-          <button className={`menu-bubble${currentTab === 'senateurs' ? ' active' : ''}`} onClick={() => setCurrentTab('senateurs')}>
-            <span className="bubble-icon">⚖️</span>
+          <button 
+            className={`menu-bubble ${currentScreen === 'senateurs' ? 'active' : ''}`}
+            onClick={() => setCurrentScreen('senateurs')}
+            data-type="senateurs"
+          >
+            <div className="bubble-icon-wrapper">
+              <Scale className="bubble-icon" />
+            </div>
             Sénateurs
           </button>
-          <button className={`menu-bubble${currentTab === 'conseillers' ? ' active' : ''}`} onClick={() => setCurrentTab('conseillers')}>
-            <span className="bubble-icon">🌐</span>
+          <button 
+            className={`menu-bubble ${currentScreen === 'ctg' ? 'active' : ''}`}
+            onClick={() => setCurrentScreen('ctg')}
+            data-type="ctg"
+          >
+            <div className="bubble-icon-wrapper">
+              <Globe2 className="bubble-icon" />
+            </div>
             CTG
           </button>
         </nav>
@@ -2679,11 +2778,11 @@ const importConseillersTerritoriaux = async () => {
                       left: '1rem',
                       color: '#94a3b8'
                     }} />
-                    <input
-                      type="text"
+              <input
+                type="text"
                       placeholder="Rechercher un élu ou une commune..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                       style={{
                         width: '100%',
                         padding: '1rem 1rem 1rem 3.5rem',
@@ -2693,9 +2792,9 @@ const importConseillersTerritoriaux = async () => {
                         color: '#e2e8f0',
                         fontSize: '1rem'
                       }}
-                    />
-                  </div>
-                </div>
+              />
+            </div>
+          </div>
 
                 {/* Header avec statistiques des communes */}
                 <div className="region-filter" style={{marginBottom: '2rem'}}>
@@ -2723,10 +2822,10 @@ const importConseillersTerritoriaux = async () => {
                     .map((commune) => (
                       <div
                         key={commune.id}
-                        onClick={() => {
+                      onClick={() => {
                           setSelectedCommune(commune);
-                          setCurrentScreen('postes');
-                        }}
+                        setCurrentScreen('postes');
+                      }}
                         className="commune-card-modern"
                         style={{
                           backgroundColor: '#1e293b',
@@ -2790,7 +2889,7 @@ const importConseillersTerritoriaux = async () => {
                           alignItems: 'center',
                           gap: '1rem'
                         }}
-                        onClick={() => {
+                      onClick={() => {
                           setSelectedElu(elu);
                           setCurrentScreen('profil');
                         }}
@@ -2848,90 +2947,36 @@ const importConseillersTerritoriaux = async () => {
                 </div>
 
 
-                <div className="elus-grid-modern" style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-                  gap: '1.5rem'
-                }}>
+                <div className="elus-grid-modern">
                   {deputes.map((depute) => (
-                    <div key={depute.id} className="elu-card-modern" style={{
-                      backgroundColor: '#1e293b',
-                      border: '1px solid #334155',
-                      borderRadius: '12px',
-                      padding: '1.5rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s'
-                    }}
-                    onClick={() => {
-                      setSelectedElu(depute);
-                      setCurrentScreen('profil');
-                    }}>
-                      <div className="elu-header" style={{display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem'}}>
-                        <div className="elu-avatar-modern" style={{
-                          backgroundColor: '#3b82f6',
-                          borderRadius: '50%',
-                          padding: '1rem',
-                          color: 'white'
-                        }}>
+                    <div key={depute.id} className="elu-card-modern">
+                      <div className="elu-header">
+                        <div className="elu-avatar-modern" style={{backgroundColor: '#3b82f6'}}>
                           <Users size={32} />
                         </div>
-                        <div className="elu-info-modern" style={{flex: 1}}>
-                          <h3 style={{color: '#e2e8f0', marginBottom: '0.25rem', fontSize: '1.2rem', fontWeight: '600'}}>
-                            {depute.name}
-                          </h3>
-                          <p style={{color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem'}}>
-                            {depute.circonscription}
-                          </p>
-                          <div style={{display: 'flex', gap: '0.5rem', flexWrap: 'wrap'}}>
-                            <span style={{
-                              backgroundColor: '#059669',
-                              color: 'white',
-                              padding: '0.25rem 0.75rem',
-                              borderRadius: '20px',
-                              fontSize: '0.75rem',
-                              fontWeight: 'bold'
-                            }}>
-                              {depute.parti}
-                            </span>
-                            <span style={{
-                              backgroundColor: '#7c3aed',
-                              color: 'white',
-                              padding: '0.25rem 0.75rem',
-                              borderRadius: '20px',
-                              fontSize: '0.75rem'
-                            }}>
-                              {depute.mandat}
-                            </span>
+                        <div className="elu-info-modern">
+                          <h3>{depute.name}</h3>
+                          <p>{depute.circonscription}</p>
+                          <div className="elu-badges">
+                            <span className="badge badge-parti">{depute.parti}</span>
+                            <span className="badge badge-mandat">{depute.mandat}</span>
                           </div>
                         </div>
                       </div>
                       
-                      <div className="elu-details" style={{marginBottom: '1rem'}}>
-                        <p style={{color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem'}}>
-                          <strong>Commission :</strong> {depute.commission}
-                        </p>
-                        <p style={{color: '#94a3b8', fontSize: '0.875rem'}}>
-                          <strong>Groupe :</strong> {depute.groupe}
-                        </p>
+                      <div className="elu-details">
+                        <p><strong>Commission :</strong> {depute.commission}</p>
+                        <p><strong>Groupe :</strong> {depute.groupe}</p>
                       </div>
 
-                      <div className="elu-rating-modern" style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem'}}>
+                      <div className="elu-rating-modern">
                         <StarRating rating={depute.rating || 0} />
-                        <span style={{color: '#94a3b8', fontSize: '0.875rem'}}>
+                        <span className="rating-text">
                           {depute.rating || 0}/5 ({depute.totalVotes || 0} votes)
                         </span>
                       </div>
                       
-                      <button style={{
-                        width: '100%',
-                        backgroundColor: '#3b82f6',
-                        color: 'white',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontWeight: '600'
-                      }}>
+                      <button className="btn-main">
                         Voir le profil complet
                       </button>
                     </div>
@@ -2964,100 +3009,46 @@ const importConseillersTerritoriaux = async () => {
                         <UserPlus size={18} />
                         {importingElus ? '⏳ Import en cours...' : '🚀 IMPORTER LES SÉNATEURS'}
                       </button>
-                    </div>
+            </div>
                   )}
                   {/* -- FIN DE LA MODIFICATION -- */}
-                </div>
+          </div>
 
 
-                <div className="elus-grid-modern" style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-                  gap: '1.5rem'
-                }}>
+                <div className="elus-grid-modern">
                   {senateurs.map((senateur) => (
-                    <div key={senateur.id} className="elu-card-modern" style={{
-                      backgroundColor: '#1e293b',
-                      border: '1px solid #334155',
-                      borderRadius: '12px',
-                      padding: '1.5rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s'
-                    }}
-                    onClick={() => {
-                      setSelectedElu(senateur);
-                      setCurrentScreen('profil');
-                    }}>
-                      <div className="elu-header" style={{display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem'}}>
-                        <div className="elu-avatar-modern" style={{
-                          backgroundColor: '#7c3aed',
-                          borderRadius: '50%',
-                          padding: '1rem',
-                          color: 'white'
-                        }}>
+                    <div key={senateur.id} className="elu-card-modern">
+                      <div className="elu-header">
+                        <div className="elu-avatar-modern" style={{backgroundColor: '#7c3aed'}}>
                           <Users size={32} />
                         </div>
-                        <div className="elu-info-modern" style={{flex: 1}}>
-                          <h3 style={{color: '#e2e8f0', marginBottom: '0.25rem', fontSize: '1.2rem', fontWeight: '600'}}>
-                            {senateur.name}
-                          </h3>
-                          <p style={{color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem'}}>
-                            Sénateur de la Guyane
-                          </p>
-                          <div style={{display: 'flex', gap: '0.5rem', flexWrap: 'wrap'}}>
-                            <span style={{
-                              backgroundColor: '#059669',
-                              color: 'white',
-                              padding: '0.25rem 0.75rem',
-                              borderRadius: '20px',
-                              fontSize: '0.75rem',
-                              fontWeight: 'bold'
-                            }}>
-                              {senateur.parti}
-                            </span>
-                            <span style={{
-                              backgroundColor: '#7c3aed',
-                              color: 'white',
-                              padding: '0.25rem 0.75rem',
-                              borderRadius: '20px',
-                              fontSize: '0.75rem'
-                            }}>
-                              {senateur.mandat}
-                            </span>
+                        <div className="elu-info-modern">
+                          <h3>{senateur.name}</h3>
+                          <p>Sénateur de la Guyane</p>
+                          <div className="elu-badges">
+                            <span className="badge badge-parti">{senateur.parti}</span>
+                            <span className="badge badge-mandat">{senateur.mandat}</span>
                           </div>
                         </div>
                       </div>
                       
-                      <div className="elu-details" style={{marginBottom: '1rem'}}>
+                      <div className="elu-details">
                         {senateur.fonction_speciale && (
-                          <p style={{color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem'}}>
-                            <strong>Fonction :</strong> {senateur.fonction_speciale}
-                          </p>
+                          <p><strong>Fonction :</strong> {senateur.fonction_speciale}</p>
                         )}
                         {senateur.particularite && (
-                          <p style={{color: '#f59e0b', fontSize: '0.875rem', fontWeight: '600'}}>
-                            ⭐ {senateur.particularite}
-                          </p>
+                          <p className="particularite">⭐ {senateur.particularite}</p>
                         )}
                       </div>
 
-                      <div className="elu-rating-modern" style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem'}}>
+                      <div className="elu-rating-modern">
                         <StarRating rating={senateur.rating || 0} />
-                        <span style={{color: '#94a3b8', fontSize: '0.875rem'}}>
+                        <span className="rating-text">
                           {senateur.rating || 0}/5 ({senateur.totalVotes || 0} votes)
                         </span>
                       </div>
                       
-                      <button style={{
-                        width: '100%',
-                        backgroundColor: '#7c3aed',
-                        color: 'white',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontWeight: '600'
-                      }}>
+                      <button className="btn-main btn-purple">
                         Voir le profil complet
                       </button>
                     </div>
@@ -3083,112 +3074,60 @@ const importConseillersTerritoriaux = async () => {
                   {/* -- MODIFICATION ICI -- */}
                   {conseillers.length === 0 && (
                     <div style={{marginTop: '1rem'}}>
-                      <button 
+                <button
                         onClick={importElusNationaux}
                         // ... autres propriétés
                       >
                         <UserPlus size={18} />
                         {importingElus ? '⏳ Import en cours...' : '🚀 IMPORTER LES CONSEILLERS'}
                       </button>
-                    </div>
+                  </div>
                   )}
                   {/* -- FIN DE LA MODIFICATION -- */}
                 </div>
 
 
-                <div className="elus-grid-modern" style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-                  gap: '1.5rem'
-                }}>
+                <div className="elus-grid-modern">
                   {conseillers.map((conseiller) => (
-                    <div key={conseiller.id} className="elu-card-modern" style={{
-                      backgroundColor: '#1e293b',
-                      border: '1px solid #334155',
-                      borderRadius: '12px',
-                      padding: '1.5rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s'
-                    }}
-                    onClick={() => {
-                      setSelectedElu(conseiller);
-                      setCurrentScreen('profil');
-                    }}>
-                      <div className="elu-header" style={{display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem'}}>
+                    <div key={conseiller.id} className="elu-card-modern">
+                      <div className="elu-header">
                         <div className="elu-avatar-modern" style={{
-                          backgroundColor: conseiller.poste.includes('Président') ? '#f59e0b' : '#ec4899',
-                          borderRadius: '50%',
-                          padding: '1rem',
-                          color: 'white'
+                          backgroundColor: conseiller.poste.includes('Président') ? '#f59e0b' : '#ec4899'
                         }}>
                           <Users size={32} />
                         </div>
-                        <div className="elu-info-modern" style={{flex: 1}}>
-                          <h3 style={{color: '#e2e8f0', marginBottom: '0.25rem', fontSize: '1.2rem', fontWeight: '600'}}>
-                            {conseiller.name}
-                          </h3>
-                          <p style={{color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem'}}>
-                            {conseiller.poste}
-                          </p>
-                          <div style={{display: 'flex', gap: '0.5rem', flexWrap: 'wrap'}}>
-                            <span style={{
-                              backgroundColor: '#059669',
-                              color: 'white',
-                              padding: '0.25rem 0.75rem',
-                              borderRadius: '20px',
-                              fontSize: '0.75rem',
-                              fontWeight: 'bold'
-                            }}>
-                              {conseiller.parti}
-                            </span>
-                            <span style={{
-                              backgroundColor: '#ec4899',
-                              color: 'white',
-                              padding: '0.25rem 0.75rem',
-                              borderRadius: '20px',
-                              fontSize: '0.75rem'
-                            }}>
-                              {conseiller.mandat}
-                            </span>
+                        <div className="elu-info-modern">
+                          <h3>{conseiller.name}</h3>
+                          <p>{conseiller.poste}</p>
+                          <div className="elu-badges">
+                            <span className="badge badge-parti">{conseiller.parti}</span>
+                            <span className="badge badge-mandat">{conseiller.mandat}</span>
                           </div>
                         </div>
                       </div>
                       
-                      <div className="elu-details" style={{marginBottom: '1rem'}}>
-                        {conseiller.delegation && (
-                          <p style={{color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem'}}>
-                            <strong>Délégation :</strong> {conseiller.delegation}
-                          </p>
+                      <div className="elu-details">
+                        {conseiller.fonction_speciale && (
+                          <p><strong>Fonction :</strong> {conseiller.fonction_speciale}</p>
                         )}
-                        {conseiller.fonction && (
-                          <p style={{color: '#f59e0b', fontSize: '0.875rem', fontWeight: '600'}}>
-                            👑 {conseiller.fonction}
-                          </p>
+                        {conseiller.particularite && (
+                          <p className="particularite">⭐ {conseiller.particularite}</p>
                         )}
                       </div>
 
-                      <div className="elu-rating-modern" style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem'}}>
+                      <div className="elu-rating-modern">
                         <StarRating rating={conseiller.rating || 0} />
-                        <span style={{color: '#94a3b8', fontSize: '0.875rem'}}>
+                        <span className="rating-text">
                           {conseiller.rating || 0}/5 ({conseiller.totalVotes || 0} votes)
                         </span>
                       </div>
                       
-                      <button style={{
-                        width: '100%',
-                        backgroundColor: '#ec4899',
-                        color: 'white',
-                        padding: '0.75rem',
-                        borderRadius: '8px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontWeight: '600'
-                      }}>
+                      <button className={`btn-main ${conseiller.poste.includes('Président') ? 'btn-orange' : 'btn-pink'}`}>
                         Voir le profil complet
-                      </button>
+                </button>
                     </div>
-                  ))}
-                </div>
+              ))}
+            </div>
               </>
             )}
 
@@ -3219,8 +3158,8 @@ const importConseillersTerritoriaux = async () => {
         }}>
           <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
             <div className="header-nav" style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-              <button 
-                onClick={() => setCurrentScreen('home')} 
+            <button
+              onClick={() => setCurrentScreen('home')}
                 className="btn-back-modern"
                 style={{
                   display: 'flex',
@@ -3235,8 +3174,8 @@ const importConseillersTerritoriaux = async () => {
                 }}
               >
                 <ArrowLeft size={20} />
-                Retour
-              </button>
+              Retour
+            </button>
               <div className="header-info">
                 <h1 className="header-title" style={{color: '#e2e8f0', fontSize: '1.5rem', fontWeight: '700', margin: 0}}>
                   {selectedCommune?.name}
@@ -3251,54 +3190,27 @@ const importConseillersTerritoriaux = async () => {
 
         <div className="content-section" style={{padding: '2rem 0'}}>
           <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
-            <div className="postes-grid-modern" style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-              gap: '1.5rem'
-            }}>
-              {postes.map((poste) => (
+            <div className="postes-grid-modern">
+            {postes.map((poste) => (
                 <div
-                  key={poste.id}
-                  onClick={() => {
-                    setSelectedPoste(poste);
-                    setCurrentScreen('elus');
-                  }}
+                key={poste.id}
+                onClick={() => {
+                  setSelectedPoste(poste);
+                  setCurrentScreen('elus');
+                }}
                   className="poste-card-modern"
                   style={{
                     background: `linear-gradient(135deg, ${poste.color}20, ${poste.color}10)`,
-                    border: `1px solid ${poste.color}40`,
-                    borderRadius: '16px',
-                    padding: '2rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    textAlign: 'center'
+                    border: `1px solid ${poste.color}40`
                   }}
                 >
-                  <div className="poste-icon-modern" style={{
-                    backgroundColor: poste.color,
-                    borderRadius: '50%',
-                    padding: '1.5rem',
-                    marginBottom: '1rem',
-                    color: 'white'
-                  }}>
-                    <span style={{fontSize: '32px'}}>{poste.icon}</span>
+                  <div className="poste-icon-modern" style={{backgroundColor: poste.color}}>
+                    <span className="poste-icon">{poste.icon}</span>
                   </div>
-                  <div className="poste-content">
-                    <h3 style={{color: '#e2e8f0', fontSize: '1.2rem', fontWeight: '600', marginBottom: '0.5rem'}}>
-                      {poste.name}
-                    </h3>
-                    <p style={{color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1rem'}}>
-                      Découvrir les élus et leurs actions
-                    </p>
+                  <h3 className="poste-title">{poste.name}</h3>
+                  <p className="poste-description">{poste.description}</p>
                   </div>
-                  <div className="poste-arrow" style={{color: poste.color}}>
-                    <ChevronDown size={20} />
-                  </div>
-                </div>
-              ))}
+            ))}
             </div>
           </div>
         </div>
@@ -3321,8 +3233,8 @@ const importConseillersTerritoriaux = async () => {
         }}>
           <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
             <div className="header-nav" style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-              <button 
-                onClick={() => setCurrentScreen('postes')} 
+            <button
+              onClick={() => setCurrentScreen('postes')}
                 className="btn-back-modern"
                 style={{
                   display: 'flex',
@@ -3337,8 +3249,8 @@ const importConseillersTerritoriaux = async () => {
                 }}
               >
                 <ArrowLeft size={20} />
-                Retour
-              </button>
+              Retour
+            </button>
               <div className="header-info">
                 <h1 className="header-title" style={{color: '#e2e8f0', fontSize: '1.5rem', fontWeight: '700', margin: 0}}>
                   {selectedPoste?.name}
@@ -3353,13 +3265,13 @@ const importConseillersTerritoriaux = async () => {
 
         <div className="content-section" style={{padding: '2rem 0'}}>
           <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
-            {filteredElus.length > 0 ? (
+          {filteredElus.length > 0 ? (
               <div className="elus-grid-modern" style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
                 gap: '1.5rem'
               }}>
-                {filteredElus.map((elu) => (
+              {filteredElus.map((elu) => (
                   <div key={elu.id} className="elu-card-modern" style={{
                     backgroundColor: '#1e293b',
                     border: '1px solid #334155',
@@ -3379,8 +3291,8 @@ const importConseillersTerritoriaux = async () => {
                       </div>
                       <div className="elu-info-modern" style={{flex: 1}}>
                         <h3 
-                          onClick={() => {
-                            setSelectedElu(elu);
+                  onClick={() => {
+                    setSelectedElu(elu);
                             setCurrentScreen('profil');
                           }}
                           style={{
@@ -3402,8 +3314,8 @@ const importConseillersTerritoriaux = async () => {
                           <StarRating rating={elu.rating || 0} />
                           <span style={{color: '#94a3b8', fontSize: '0.75rem'}}>
                             {elu.rating || 0}/5 ({elu.totalVotes || 0} votes)
-                          </span>
-                        </div>
+                        </span>
+                      </div>
                         <div className={`elu-status ${elu.status}`} style={{
                           marginTop: '0.5rem',
                           display: 'inline-block',
@@ -3414,8 +3326,8 @@ const importConseillersTerritoriaux = async () => {
                           color: 'white'
                         }}>
                           {elu.status === 'actuel' ? '🟢 En cours' : '🔵 Mandat passé'}
-                        </div>
-                      </div>
+                    </div>
+                  </div>
                     </div>
                     
                     {elu.parti && (
@@ -3462,11 +3374,11 @@ const importConseillersTerritoriaux = async () => {
                       }}
                     >
                       Voir le profil
-                    </button>
+                </button>
                   </div>
-                ))}
-              </div>
-            ) : (
+              ))}
+            </div>
+          ) : (
               <div className="empty-state-modern" style={{
                 textAlign: 'center',
                 padding: '4rem 2rem',
@@ -3526,8 +3438,8 @@ const importConseillersTerritoriaux = async () => {
                   <p style={{color: '#10b981', fontSize: '0.75rem', marginTop: '0.5rem'}}>
                     📍 Maires vérifiés : Marie-Laure Phinéra-Horth (Cayenne), Sophie Charles (Saint-Laurent), François Ringuet (Kourou)...
                   </p>
-                </div>
-              )}
+            </div>
+          )}
 
               {/* BOUTON ADJOINTS - Visible seulement s'il n'y a aucun adjoint */}
               {!hasElusOfType(['Adjoints au Maire']) && (
@@ -3698,7 +3610,7 @@ const importConseillersTerritoriaux = async () => {
         }}>
           <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
             <div className="header-nav" style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-              <button 
+            <button
                 onClick={() => {
                   // Retourner vers le bon écran selon le type d'élu
                   if (selectedElu?.poste === 'Député' || selectedElu?.poste === 'Sénateur' || selectedElu?.poste?.includes('CTG')) {
@@ -3721,8 +3633,8 @@ const importConseillersTerritoriaux = async () => {
                 }}
               >
                 <ArrowLeft size={20} />
-                Retour
-              </button>
+              Retour
+            </button>
               <div className="header-info">
                 <h1 className="header-title" style={{color: '#e2e8f0', fontSize: '1.5rem', fontWeight: '700', margin: 0}}>
                   {selectedElu?.name}
@@ -3761,7 +3673,7 @@ const importConseillersTerritoriaux = async () => {
                   color: 'white'
                 }}>
                   <Users size={48} />
-                </div>
+              </div>
                 <div className="profile-info-modern" style={{flex: 1}}>
                   <h2 style={{color: '#e2e8f0', fontSize: '2rem', fontWeight: '700', marginBottom: '0.5rem'}}>
                     {selectedElu?.name}
@@ -3782,7 +3694,7 @@ const importConseillersTerritoriaux = async () => {
                         fontWeight: 'bold'
                       }}>
                         {selectedElu.parti}
-                      </span>
+                    </span>
                     )}
                     {selectedElu?.mandat && (
                       <span style={{
@@ -3793,7 +3705,7 @@ const importConseillersTerritoriaux = async () => {
                         fontSize: '0.875rem'
                       }}>
                         {selectedElu.mandat}
-                      </span>
+                    </span>
                     )}
                     {selectedElu?.status && (
                       <span style={{
@@ -3807,7 +3719,7 @@ const importConseillersTerritoriaux = async () => {
                       </span>
                     )}
                   </div>
-
+                  
                   {/* Informations spécifiques selon le type d'élu */}
                   <div style={{color: '#94a3b8', fontSize: '0.875rem', lineHeight: '1.6'}}>
                     {selectedElu?.circonscription && (
@@ -3859,18 +3771,18 @@ const importConseillersTerritoriaux = async () => {
                 
                 <div className="user-rating-modern">
                   <h4 style={{color: '#e2e8f0', marginBottom: '1rem', fontSize: '1.1rem'}}>Votre évaluation</h4>
-                  <StarRating 
-                    rating={userRating} 
-                    onRate={setUserRating}
-                    interactive={true}
-                  />
+                    <StarRating 
+                      rating={userRating} 
+                      onRate={setUserRating}
+                      interactive={true}
+                    />
                   {userRating > 0 && (
                     <p style={{color: '#10b981', fontSize: '0.875rem', marginTop: '0.5rem'}}>
                       ✅ Note enregistrée : {userRating}/5
                     </p>
                   )}
+                  </div>
                 </div>
-              </div>
             </div>{/* Questions et avis */}
             <div className="avis-section">
               <div className="avis-section-header">
@@ -3883,13 +3795,13 @@ const importConseillersTerritoriaux = async () => {
                 <div className="avis-empty">
                   <MessageCircle size={48} style={{marginBottom: '1rem'}} />
                   <p>Soyez le premier à donner votre avis sur cet élu !</p>
-                </div>
+            </div>
               ) : (
                 avisElu.slice(0, 5).map((avis) => (
                   <div className="avis-card" key={avis.id}>
                     <div className="avis-avatar">
                       {avis.author && avis.author !== 'Anonyme' ? avis.author[0].toUpperCase() : <Users size={24} />}
-                    </div>
+          </div>
                     <div className="avis-content">
                       <div className="avis-header">
                         <span className="avis-author">{avis.author}</span>
@@ -3897,75 +3809,41 @@ const importConseillersTerritoriaux = async () => {
                         <span className={`avis-badge${avis.type === 'question' ? ' question' : ''}`}>
                           {avis.type === 'avis' ? 'Avis public' : 'Question privée'}
                         </span>
-                      </div>
+              </div>
                       <div className="avis-text">{avis.text}</div>
                       <div className="avis-actions">
                         <button className="avis-like" onClick={() => handleLike(avis.id)}>
                           <ThumbsUp size={16} /> {avis.likes}
                         </button>
-                      </div>
+              </div>
                     </div>
                   </div>
                 ))
-              )}
-            </div>
+            )}
+          </div>
 
             {/* Actions */}
-            <div className="actions-section-modern" style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-              gap: '1rem'
-            }}>
-              <button
-                onClick={() => {
-                  setMessageType('avis');
-                  setCurrentScreen('message');
-                }}
+            <div className="actions-section-modern">
+            <button
+              onClick={() => {
+                setMessageType('avis');
+                setCurrentScreen('message');
+              }}
                 className="action-btn-modern primary"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.75rem',
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  padding: '1rem 1.5rem',
-                  borderRadius: '12px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  transition: 'all 0.3s'
-                }}
               >
                 <MessageCircle size={20} />
                 Laisser un avis public
-              </button>
-              <button
-                onClick={() => {
-                  setMessageType('question');
-                  setCurrentScreen('message');
-                }}
+            </button>
+            <button
+              onClick={() => {
+                setMessageType('question');
+                setCurrentScreen('message');
+              }}
                 className="action-btn-modern secondary"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.75rem',
-                  backgroundColor: 'transparent',
-                  color: '#3b82f6',
-                  padding: '1rem 1.5rem',
-                  borderRadius: '12px',
-                  border: '2px solid #3b82f6',
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  transition: 'all 0.3s'
-                }}
               >
                 <Send size={20} />
                 Poser une question privée
-              </button>
+            </button>
             </div>
           </div>
         </div>
@@ -4018,8 +3896,111 @@ const importConseillersTerritoriaux = async () => {
         }}>
           <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
             <div className="header-nav" style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-              <button 
+            <button
                 onClick={() => setCurrentScreen('profil')} 
+                className="btn-back-modern"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  backgroundColor: '#374151',
+                  color: '#e5e7eb',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '8px',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <ArrowLeft size={20} />
+              Retour
+            </button>
+              <div className="header-info">
+                <h1 className="header-title" style={{color: '#e2e8f0', fontSize: '1.5rem', fontWeight: '700', margin: 0}}>
+                  {messageType === 'avis' ? '📝 Laisser un avis public' : '❓ Poser une question privée'}
+              </h1>
+                <p className="header-subtitle" style={{color: '#94a3b8', fontSize: '0.875rem', margin: 0}}>
+                  À {selectedElu?.name}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="content-section" style={{padding: '2rem 0'}}>
+          <div className="container" style={{ maxWidth: '800px', margin: '0 auto', padding: '0 1rem' }}>
+            <div className="message-form-modern">
+              <div className={`message-info-modern ${messageType}`}>
+                <div className="info-icon-modern">
+                {messageType === 'avis' ? (
+                    <MessageCircle size={24} />
+                ) : (
+                    <Send size={24} />
+                )}
+                </div>
+                <div>
+                  <h3>{messageType === 'avis' ? 'Avis public' : 'Question privée'}</h3>
+                  <p>
+                    {messageType === 'avis' 
+                      ? 'Votre avis sera visible par tous les citoyens et pourra être liké.'
+                      : 'Votre question sera envoyée directement à l\'élu de manière confidentielle.'
+                    }
+                  </p>
+              </div>
+            </div>
+
+              <div className="form-group-modern">
+                <label>
+                  {messageType === 'avis' ? 'Votre avis' : 'Votre question'}
+                </label>
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  rows={6}
+                  placeholder={messageType === 'avis' 
+                    ? 'Partagez votre opinion sur l\'action de cet élu...'
+                    : 'Posez votre question à cet élu...'
+                  }
+                />
+              </div>
+
+              <div className="form-actions-modern">
+                <button 
+                  className="btn-submit-modern"
+                  disabled={!message.trim()}
+                  onClick={handleSubmit}
+                >
+                  {messageType === 'avis' ? 'Publier mon avis' : 'Envoyer ma question'}
+                </button>
+                <button 
+                  className="btn-cancel-modern"
+                  onClick={() => setCurrentScreen('profil')}
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Ajouter la section des maires
+  if (currentScreen === 'maires') {
+    // Juste avant le return ou l'utilisation de 'maires'
+    const maires = elus.filter((elu) => elu.poste === 'Maire');
+
+    return (
+      <div className="app-modern">
+        <div className="header-modern" style={{
+          backgroundColor: '#1e293b',
+          borderBottom: '1px solid #334155',
+          padding: '1rem 0'
+        }}>
+          <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
+            <div className="header-nav" style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+              <button 
+                onClick={() => setCurrentScreen('home')} 
                 className="btn-back-modern"
                 style={{
                   display: 'flex',
@@ -4038,150 +4019,322 @@ const importConseillersTerritoriaux = async () => {
               </button>
               <div className="header-info">
                 <h1 className="header-title" style={{color: '#e2e8f0', fontSize: '1.5rem', fontWeight: '700', margin: 0}}>
-                  {messageType === 'avis' ? '📝 Laisser un avis public' : '❓ Poser une question privée'}
+                  Maires de Guyane
                 </h1>
                 <p className="header-subtitle" style={{color: '#94a3b8', fontSize: '0.875rem', margin: 0}}>
-                  À {selectedElu?.name}
+                  Recherchez un maire par nom ou par commune
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="content-section" style={{padding: '2rem 0'}}>
-          <div className="container" style={{ maxWidth: '800px', margin: '0 auto', padding: '0 1rem' }}>
-            <div className="message-form-modern">
-              <div className={`message-info-modern ${messageType}`} style={{
-                backgroundColor: messageType === 'avis' ? '#059669' : '#3b82f6',
-                borderRadius: '12px',
-                padding: '1.5rem',
-                marginBottom: '2rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1rem'
-              }}>
-                <div className="info-icon-modern" style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                  borderRadius: '50%',
-                  padding: '1rem',
-                  color: 'white'
-                }}>
-                  {messageType === 'avis' ? (
-                    <MessageCircle size={24} />
-                  ) : (
-                    <Send size={24} />
-                  )}
-                </div>
-                <div>
-                  <h3 style={{color: 'white', fontSize: '1.2rem', fontWeight: '600', marginBottom: '0.5rem'}}>
-                    {messageType === 'avis' ? 'Avis public' : 'Question privée'}
-                  </h3>
-                  <p style={{color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.875rem', margin: 0}}>
-                    {messageType === 'avis' 
-                      ? 'Votre avis sera visible par tous les citoyens et pourra être liké.'
-                      : 'Votre question sera envoyée directement à l\'élu de manière confidentielle.'
-                    }
-                  </p>
-                </div>
-              </div>
-
-              <div className="form-group-modern" style={{marginBottom: '2rem'}}>
-                <label style={{
-                  color: '#e2e8f0',
-                  fontSize: '1.1rem',
-                  fontWeight: '600',
-                  marginBottom: '0.75rem',
-                  display: 'block'
-                }}>
-                  {messageType === 'avis' ? 'Votre avis' : 'Votre question'}
-                </label>
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  rows={6}
-                  placeholder={messageType === 'avis' 
-                    ? 'Partagez votre opinion sur l\'action de cet élu...'
-                    : 'Posez votre question à cet élu...'
-                  }
-                  style={{
-                    width: '100%',
-                    padding: '1rem',
-                    backgroundColor: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: '8px',
-                    color: '#e2e8f0',
-                    fontSize: '1rem',
-                    resize: 'vertical',
-                    minHeight: '120px'
-                  }}
+        <div className="content-section">
+          <div className="container">
+            <div className="section-header-modern">
+              <h2>Les Maires de Guyane</h2>
+              <div className="search-box-modern">
+                <Search className="search-icon" />
+                  <input
+                  type="text"
+                  placeholder="Rechercher un maire..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
+            </div>
 
-              <div className="form-group-modern" style={{marginBottom: '2rem'}}>
-                <label className="checkbox-label-modern" style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  cursor: 'pointer',
-                  color: '#e2e8f0'
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={isAnonymous}
-                    onChange={(e) => setIsAnonymous(e.target.checked)}
-                    style={{
-                      width: '18px',
-                      height: '18px',
-                      accentColor: '#3b82f6'
-                    }}
-                  />
-                  <span>Publier de manière anonyme</span>
-                </label>
+            <div className="elus-grid-modern">
+              {maires
+                .filter(maire => 
+                  maire.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  maire.commune.toLowerCase().includes(searchTerm.toLowerCase())
+                )
+                .map((maire) => (
+                  <div key={maire.id} className="elu-card-modern">
+                    <div className="elu-header">
+                      <div className="elu-avatar-modern" style={{backgroundColor: '#f59e0b'}}>
+                        <UserCheck size={32} />
+                      </div>
+                      <div className="elu-info-modern">
+                        <h3>{maire.name}</h3>
+                        <p>Maire de {maire.commune}</p>
+                        <div className="elu-badges">
+                          <span className="badge badge-parti">{maire.parti}</span>
+                          <span className="badge badge-mandat">{maire.mandat}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="elu-details">
+                      {maire.fonction_speciale && (
+                        <p><strong>Fonction :</strong> {maire.fonction_speciale}</p>
+                      )}
+                      {maire.particularite && (
+                        <p className="particularite">⭐ {maire.particularite}</p>
+                      )}
+                    </div>
+
+                    <div className="elu-rating-modern">
+                      <StarRating rating={maire.rating || 0} />
+                      <span className="rating-text">
+                        {maire.rating || 0}/5 ({maire.totalVotes || 0} votes)
+                  </span>
               </div>
 
-              <div className="form-actions-modern" style={{
-                display: 'flex',
-                gap: '1rem',
-                flexWrap: 'wrap'
-              }}>
-                <button 
-                  onClick={handleSubmit} 
-                  className="btn-submit-modern"
-                  disabled={!message.trim()}
-                  style={{
-                    backgroundColor: !message.trim() ? '#6b7280' : (messageType === 'avis' ? '#059669' : '#3b82f6'),
-                    color: 'white',
-                    padding: '1rem 2rem',
-                    borderRadius: '12px',
-                    border: 'none',
-                    cursor: !message.trim() ? 'not-allowed' : 'pointer',
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    flex: 1,
-                    minWidth: '200px'
-                  }}
-                >
-                  {messageType === 'avis' ? 'Publier l\'avis' : 'Envoyer la question'}
+                <button
+                      className="btn-main btn-orange"
+                      onClick={() => {
+                        setSelectedElu(maire);
+                        setCurrentScreen('profil');
+                      }}
+                    >
+                      Voir le profil complet
                 </button>
-                <button 
-                  onClick={() => setCurrentScreen('profil')} 
-                  className="btn-cancel-modern"
-                  style={{
-                    backgroundColor: 'transparent',
-                    color: '#94a3b8',
-                    padding: '1rem 2rem',
-                    borderRadius: '12px',
-                    border: '1px solid #374151',
-                    cursor: 'pointer',
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    flex: 1,
-                    minWidth: '200px'
-                  }}
-                >
-                  Annuler
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ÉCRAN DÉPUTÉS
+  if (currentScreen === 'deputes') {
+    return (
+      <div className="app-modern">
+        <Header
+          title="Députés de Guyane"
+          subtitle="Les représentants de la Guyane à l'Assemblée nationale"
+          currentScreen={currentScreen}
+          setCurrentScreen={setCurrentScreen}
+          setCurrentTab={setCurrentTab}
+        />
+
+        <div className="content-section">
+          <div className="container">
+            <div className="search-bar-modern">
+              <Search className="search-icon" size={20} />
+              <input
+                type="text"
+                placeholder="Rechercher un député..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            <div className="elus-grid-modern">
+              {deputes
+                .filter(depute => 
+                  depute.name.toLowerCase().includes(searchTerm.toLowerCase())
+                )
+                .map((depute) => (
+                  <div key={depute.id} className="elu-card-modern">
+                    <div className="elu-header">
+                      <div className="elu-avatar-modern" style={{backgroundColor: '#3b82f6'}}>
+                        <Users size={32} />
+                      </div>
+                      <div className="elu-info-modern">
+                        <h3>{depute.name}</h3>
+                        <p>{depute.circonscription}</p>
+                        <div className="elu-badges">
+                          <span className="badge badge-parti">{depute.parti}</span>
+                          <span className="badge badge-mandat">{depute.mandat}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="elu-details">
+                      {depute.commission && (
+                        <p><strong>Commission :</strong> {depute.commission}</p>
+                      )}
+                      {depute.particularite && (
+                        <p className="particularite">⭐ {depute.particularite}</p>
+                      )}
+                    </div>
+
+                    <div className="elu-rating-modern">
+                      <StarRating rating={depute.rating || 0} />
+                      <span className="rating-text">
+                        {depute.rating || 0}/5 ({depute.totalVotes || 0} votes)
+                      </span>
+                    </div>
+                    
+                <button
+                      className="btn-main btn-blue"
+                      onClick={() => {
+                        setSelectedElu(depute);
+                        setCurrentScreen('profil');
+                      }}
+                    >
+                      Voir le profil
                 </button>
               </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ÉCRAN SÉNATEURS
+  if (currentScreen === 'senateurs') {
+    return (
+      <div className="app-modern">
+        <Header
+          title="Sénateurs de Guyane"
+          subtitle="Les représentants de la Guyane au Sénat"
+          currentScreen={currentScreen}
+          setCurrentScreen={setCurrentScreen}
+          setCurrentTab={setCurrentTab}
+        />
+
+        <div className="content-section">
+          <div className="container">
+            <div className="search-bar-modern">
+              <Search className="search-icon" size={20} />
+              <input
+                type="text"
+                placeholder="Rechercher un sénateur..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            <div className="elus-grid-modern">
+              {senateurs
+                .filter(senateur => 
+                  senateur.name.toLowerCase().includes(searchTerm.toLowerCase())
+                )
+                .map((senateur) => (
+                  <div key={senateur.id} className="elu-card-modern">
+                    <div className="elu-header">
+                      <div className="elu-avatar-modern" style={{backgroundColor: '#7c3aed'}}>
+                        <Users size={32} />
+                      </div>
+                      <div className="elu-info-modern">
+                        <h3>{senateur.name}</h3>
+                        <p>Sénateur de Guyane</p>
+                        <div className="elu-badges">
+                          <span className="badge badge-parti">{senateur.parti}</span>
+                          <span className="badge badge-mandat">{senateur.mandat}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="elu-details">
+                      {senateur.commission && (
+                        <p><strong>Commission :</strong> {senateur.commission}</p>
+                      )}
+                      {senateur.particularite && (
+                        <p className="particularite">⭐ {senateur.particularite}</p>
+                      )}
+                    </div>
+
+                    <div className="elu-rating-modern">
+                      <StarRating rating={senateur.rating || 0} />
+                      <span className="rating-text">
+                        {senateur.rating || 0}/5 ({senateur.totalVotes || 0} votes)
+                      </span>
+                    </div>
+                    
+                    <button 
+                      className="btn-main btn-purple"
+                      onClick={() => {
+                        setSelectedElu(senateur);
+                        setCurrentScreen('profil');
+                      }}
+                    >
+                      Voir le profil
+                    </button>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ÉCRAN CTG
+  if (currentScreen === 'ctg') {
+    return (
+      <div className="app-modern">
+        <Header
+          title="Conseillers Territoriaux de Guyane"
+          subtitle="Les élus de la Collectivité Territoriale de Guyane"
+          currentScreen={currentScreen}
+          setCurrentScreen={setCurrentScreen}
+          setCurrentTab={setCurrentTab}
+        />
+
+        <div className="content-section">
+          <div className="container">
+            <div className="search-bar-modern">
+              <Search className="search-icon" size={20} />
+              <input
+                type="text"
+                placeholder="Rechercher un conseiller..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            <div className="elus-grid-modern">
+              {conseillers
+                .filter(conseiller => 
+                  conseiller.name.toLowerCase().includes(searchTerm.toLowerCase())
+                )
+                .map((conseiller) => (
+                  <div key={conseiller.id} className="elu-card-modern">
+                    <div className="elu-header">
+                      <div className="elu-avatar-modern" style={{backgroundColor: '#059669'}}>
+                        <Users size={32} />
+                      </div>
+                      <div className="elu-info-modern">
+                        <h3>{conseiller.name}</h3>
+                        <p>Conseiller territorial</p>
+                        <div className="elu-badges">
+                          <span className="badge badge-parti">{conseiller.parti}</span>
+                          {conseiller.delegation && (
+                            <span className="badge badge-delegation">{conseiller.delegation}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="elu-details">
+                      {conseiller.commission && (
+                        <p><strong>Commission :</strong> {conseiller.commission}</p>
+                      )}
+                      {conseiller.fonction_speciale && (
+                        <p><strong>Fonction :</strong> {conseiller.fonction_speciale}</p>
+                      )}
+                      {conseiller.particularite && (
+                        <p className="particularite">⭐ {conseiller.particularite}</p>
+                      )}
+                    </div>
+
+                    <div className="elu-rating-modern">
+                      <StarRating rating={conseiller.rating || 0} />
+                      <span className="rating-text">
+                        {conseiller.rating || 0}/5 ({conseiller.totalVotes || 0} votes)
+                      </span>
+                    </div>
+                    
+                    <button 
+                      className="btn-main btn-green"
+                      onClick={() => {
+                        setSelectedElu(conseiller);
+                        setCurrentScreen('profil');
+                      }}
+                    >
+                      Voir le profil
+                    </button>
+                  </div>
+                ))}
             </div>
           </div>
         </div>
