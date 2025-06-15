@@ -4,43 +4,29 @@ import { db } from './firebase';
 import { collection, getDocs, setDoc, doc } from 'firebase/firestore';
 import './AppModern.css';
 
-// SERVICE D'ACTUALITÉS
+// SERVICE D'ACTUALITÉS DÉSACTIVÉ POUR LE DÉPLOIEMENT
 const newsService = {
   async getEluNews(eluName, commune = '') {
     try {
-      // Utiliser une seule requête simple
-      const query = `${eluName} Guyane`;
-      console.log(`🔍 Recherche d'actualités pour: "${query}"`);
-
-      const response = await fetch(`/api/news?q=${encodeURIComponent(query)}`);
+      console.log(`📰 Actualités temporairement désactivées pour: "${eluName}"`);
       
-      if (!response.ok) {
-        throw new Error(`Erreur API: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('Données reçues de l\'API:', data);
-
-      if (!data.articles || data.articles.length === 0) {
-        console.log('Aucun article trouvé dans la réponse');
-        return [];
-      }
-
-      const articles = data.articles
-        .filter(article => article.title && article.description)
-        .slice(0, 5)
-        .map(article => ({
-          id: article.url,
-          title: article.title,
-          description: article.description,
-          url: article.url,
-          publishedAt: new Date(article.publishedAt).toLocaleDateString('fr-FR'),
-          source: article.source?.name || 'Source inconnue',
-          imageUrl: article.urlToImage
-        }));
-
-      console.log('Articles transformés:', articles);
-      return articles;
+      // Retourner des données vides pour éviter l'erreur
+      return [];
+      
+      // Alternative: Retourner un message informatif
+      /*
+      return [
+        {
+          id: 'info-1',
+          title: 'Actualités bientôt disponibles',
+          description: 'Les actualités en temps réel seront disponibles dans une prochaine mise à jour de la plateforme Oroyo.',
+          url: '#',
+          publishedAt: new Date().toLocaleDateString('fr-FR'),
+          source: 'Oroyo Team',
+          imageUrl: null
+        }
+      ];
+      */
 
     } catch (error) {
       console.error('❌ Erreur lors de la recherche d\'actualités:', error);
@@ -256,8 +242,14 @@ function App() {
   const fetchEluNews = async (eluName) => {
     setLoadingNews(true);
     try {
-      const articles = await newsService.getEluNews(eluName, selectedElu?.commune || '');
-      setNews(articles);
+      // Désactiver les actualités pour le déploiement
+      console.log(`📰 Actualités désactivées pour: ${eluName}`);
+      setNews([]);
+      
+      // Si vous voulez garder la logique originale mais désactivée:
+      // const articles = await newsService.getEluNews(eluName, selectedElu?.commune || '');
+      // setNews(articles);
+      
     } catch (error) {
       console.error('Erreur lors de la récupération des actualités:', error);
       setNews([]);
