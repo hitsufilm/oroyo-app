@@ -5,27 +5,14 @@ import { collection, getDocs, setDoc, doc } from 'firebase/firestore';
 import './AppModern.css';
 
 // SERVICE D'ACTUALITÉS
-const NEWS_API_KEY = process.env.REACT_APP_NEWS_API_KEY;
-const NEWS_BASE_URL = 'https://newsapi.org/v2/everything';
-
-// Service d'actualités simplifié
 const newsService = {
   async getEluNews(eluName, commune = '') {
     try {
-      if (!NEWS_API_KEY) {
-        console.error('❌ Clé NewsAPI manquante');
-        return [];
-      }
-
       // Utiliser une seule requête simple
       const query = `${eluName} Guyane`;
       console.log(`🔍 Recherche d'actualités pour: "${query}"`);
 
-      const response = await fetch(
-        `${NEWS_BASE_URL}?q=${encodeURIComponent(query)}&language=fr&sortBy=publishedAt&pageSize=10&apiKey=${NEWS_API_KEY}`
-      );
-
-      console.log('Status de la réponse:', response.status);
+      const response = await fetch(`/api/news?q=${encodeURIComponent(query)}`);
       
       if (!response.ok) {
         throw new Error(`Erreur API: ${response.status}`);
