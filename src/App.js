@@ -1,36 +1,62 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ChevronDown, Users, ArrowLeft, Star, MessageCircle, Send, ThumbsUp, MapPin, Download, UserPlus, Home, Building, Crown, Globe2, Scale, Vote, UserCheck, Map, Landmark, Newspaper } from 'lucide-react';
-import { db } from './firebase';
+import { db, auth } from './firebase';
 import { collection, getDocs, setDoc, doc } from 'firebase/firestore';
+import { 
+  signInWithPopup, 
+  FacebookAuthProvider, 
+  signInAnonymously, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  updateProfile,
+  signOut
+} from 'firebase/auth';
 import './AppModern.css';
+import { useAuth, AuthModal, UserButton } from './components/AuthComponent';
 
-// SERVICE D'ACTUALITÉS DÉSACTIVÉ POUR LE DÉPLOIEMENT
+// SERVICE D'ACTUALITÉS RÉACTIVÉ POUR VERCEL
 const newsService = {
   async getEluNews(eluName, commune = '') {
     try {
-      console.log(`📰 Actualités temporairement désactivées pour: "${eluName}"`);
+      const query = `${eluName} Guyane`;
+      console.log(`🔍 Recherche d'actualités pour: "${query}"`);
+
+      const response = await fetch(`/api/news?q=${encodeURIComponent(query)}`);
       
-      // Retourner des données vides pour éviter l'erreur
-      return [];
-      
-      // Alternative: Retourner un message informatif
-      /*
-      return [
-        {
-          id: 'info-1',
-          title: 'Actualités bientôt disponibles',
-          description: 'Les actualités en temps réel seront disponibles dans une prochaine mise à jour de la plateforme Oroyo.',
-          url: '#',
-          publishedAt: new Date().toLocaleDateString('fr-FR'),
-          source: 'Oroyo Team',
-          imageUrl: null
-        }
-      ];
-      */
+      if (!response.ok) {
+        console.error(`❌ Erreur API: ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      console.log('📊 Données reçues:', data);
+
+      if (!data.articles || data.articles.length === 0) {
+        console.log('ℹ️ Aucun article trouvé');
+        return [];
+      }
+
+      const articles = data.articles
+        .filter(article => article.title && article.description)
+        .slice(0, 5)
+        .map(article => ({
+          id: article.url || `article-${Date.now()}-${Math.random()}`,
+            title: article.title,
+            description: article.description,
+          url: article.url || '#',
+          publishedAt: article.publishedAt ? 
+            new Date(article.publishedAt).toLocaleDateString('fr-FR') : 
+            new Date().toLocaleDateString('fr-FR'),
+          source: article.source?.name || 'Source inconnue',
+            imageUrl: article.urlToImage
+          }));
+    
+      console.log(`✅ ${articles.length} articles traités`);
+      return articles;
 
     } catch (error) {
       console.error('❌ Erreur lors de la recherche d\'actualités:', error);
-      return [];
+    return [];
     }
   }
 };
@@ -125,7 +151,7 @@ const RankingSection = ({ title, elus, setSelectedElu, setCurrentScreen }) => {
 };
 
 // Header Component
-const Header = ({ title, subtitle, currentScreen, setCurrentScreen, setCurrentTab }) => {
+const Header = ({ title, subtitle, currentScreen, setCurrentScreen, setCurrentTab, children, showMiniNav }) => {
   return (
     <>
       <div className="header-modern">
@@ -144,10 +170,13 @@ const Header = ({ title, subtitle, currentScreen, setCurrentScreen, setCurrentTa
                 <p className="header-subtitle">{subtitle}</p>
               </div>
             </div>
+            <div className="header-right">
+              {children}
+            </div>
           </div>
         </div>
       </div>
-      <nav className="mini-nav">
+      <nav className={`mini-nav ${showMiniNav ? 'visible' : ''}`}>
         <button 
           className={`mini-nav-item ${currentScreen === 'communes' ? 'active' : ''}`}
           onClick={() => {
@@ -205,25 +234,13 @@ const Header = ({ title, subtitle, currentScreen, setCurrentScreen, setCurrentTa
 };
 
 function App() {
+    // === ÉTATS POUR LA NAVIGATION ===
+    const [currentScreen, setCurrentScreen] = useState('communes');
   const [currentTab, setCurrentTab] = useState('communes');
-  const [currentScreen, setCurrentScreen] = useState('home');
-  const [selectedCommune, setSelectedCommune] = useState(null);
-  const [selectedPoste, setSelectedPoste] = useState(null);
-  const [selectedElu, setSelectedElu] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [userRating, setUserRating] = useState(0);
-  const [messageType, setMessageType] = useState('avis');
-  const [message, setMessage] = useState('');
-  const [isAnonymous, setIsAnonymous] = useState(false);
 
-  // Charger les actualités quand on accède au profil d'un élu
-  useEffect(() => {
-    if (selectedElu && currentScreen === 'profil') {
-      fetchEluNews(selectedElu.name);
-    }
-  }, [selectedElu, currentScreen]);
-
-  // États pour les données
+    // === ÉTATS POUR LES ÉLUS ET DONNÉES ===
+    const [selectedElu, setSelectedElu] = useState(null);
   const [communes, setCommunes] = useState([]);
   const [postes, setPostes] = useState([]);
   const [elus, setElus] = useState([]);
@@ -232,24 +249,91 @@ function App() {
   const [conseillers, setConseillers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [avisLocaux, setAvisLocaux] = useState([]);
   const [importingElus, setImportingElus] = useState(false);
-  const [sortOrder, setSortOrder] = useState('desc'); // 'desc' pour décroissant (par défaut), 'asc' pour croissant
+    const [sortOrder, setSortOrder] = useState('desc');
+
+    // === ÉTATS POUR LES AVIS ET MESSAGES ===
+    const [messageType, setMessageType] = useState('avis');
+    const [message, setMessage] = useState('');
+    const [userRating, setUserRating] = useState(0);
+    const [avisLocaux, setAvisLocaux] = useState([]);
+
+    // === ÉTATS POUR LES ACTUALITÉS ===
   const [news, setNews] = useState([]);
   const [loadingNews, setLoadingNews] = useState(false);
+
+    // === ÉTATS POUR L'AUTHENTIFICATION ===
+    const { user, loading: authLoading, setLoading: setAuthLoading, signOut: signOutUser } = useAuth();
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [selectedCommune, setSelectedCommune] = useState(null);
+    const [selectedPoste, setSelectedPoste] = useState(null);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [displayName, setDisplayName] = useState('');
+    const [authError, setAuthError] = useState(null);
+    const [showUserMenu, setShowUserMenu] = useState(false);
+    const [showMiniMenu, setShowMiniMenu] = useState(false);
+    const [showSearchBar, setShowSearchBar] = useState(false);
+    const [showBackButton, setShowBackButton] = useState(false);
+    const [showMenuBubbles, setShowMenuBubbles] = useState(true);
+    const [showStatsBar, setShowStatsBar] = useState(true);
+    const [showMainHeader, setShowMainHeader] = useState(true);
+    const [showMiniNav, setShowMiniNav] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+
+      // Effet pour gérer la visibilité du mini menu en fonction du défilement
+  useEffect(() => {
+    const handleScroll = () => {
+      const menuBubbleBar = document.querySelector('.menu-bubble-bar');
+      if (menuBubbleBar) {
+        const menuBubbleBarBottom = menuBubbleBar.getBoundingClientRect().bottom;
+        setShowMiniNav(menuBubbleBarBottom < 0);
+      }
+    };
+
+    // Seulement sur les écrans home et communes
+    if (currentScreen === 'home' || currentScreen === 'communes') {
+      window.addEventListener('scroll', handleScroll);
+      return () => window.removeEventListener('scroll', handleScroll);
+    } else {
+      setShowMiniNav(false);
+    }
+  }, [currentScreen]);
+
+  // === FONCTION POUR GÉRER LE SUCCÈS DE L'AUTHENTIFICATION ===
+  const handleAuthSuccess = (user) => {
+    console.log('✅ Utilisateur connecté:', user.displayName || user.email || 'Anonyme');
+    setShowAuthModal(false);
+      // Vous pouvez ajouter ici d'autres actions après connexion
+    };
+
+  // === FONCTION POUR GÉRER LA DÉCONNEXION ===
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      setShowUserMenu(false);
+    } catch (error) {
+      console.error('Erreur déconnexion:', error);
+    }
+  };
+
+  // Charger les actualités quand on accède au profil d'un élu
+  useEffect(() => {
+    if (selectedElu && currentScreen === 'profil') {
+      fetchEluNews(selectedElu.name);
+    }
+  }, [selectedElu, currentScreen]);
+
+  // Les états sont maintenant déclarés au début du composant
 
   // Fonction pour récupérer les actualités d'un élu
   const fetchEluNews = async (eluName) => {
     setLoadingNews(true);
     try {
-      // Désactiver les actualités pour le déploiement
-      console.log(`📰 Actualités désactivées pour: ${eluName}`);
-      setNews([]);
-      
-      // Si vous voulez garder la logique originale mais désactivée:
-      // const articles = await newsService.getEluNews(eluName, selectedElu?.commune || '');
-      // setNews(articles);
-      
+      console.log(`📰 Chargement des actualités pour: ${eluName}`);
+      const articles = await newsService.getEluNews(eluName, selectedElu?.commune || '');
+      setNews(articles);
+      console.log(`📰 ${articles.length} actualités chargées`);
     } catch (error) {
       console.error('Erreur lors de la récupération des actualités:', error);
       setNews([]);
@@ -2860,13 +2944,31 @@ const importConseillersTerritoriaux = async () => {
 
   return (
     <div className="app-modern">
-      <Header 
-        title="Popularité"
-        subtitle="Classement des élus les mieux notés"
-        currentScreen={currentScreen}
-        setCurrentScreen={setCurrentScreen}
-        setCurrentTab={setCurrentTab}
-      />
+              <Header 
+          title="Popularité"
+          subtitle="Classement des élus les mieux notés"
+          currentScreen={currentScreen}
+          setCurrentScreen={setCurrentScreen}
+          setCurrentTab={setCurrentTab}
+          showMiniNav={showMiniNav}
+        >
+        <div className="header-right">
+          {user ? (
+            <UserButton 
+              user={user} 
+              onSignOut={handleSignOut}
+            />
+          ) : (
+            <button 
+              className="login-button"
+              onClick={() => setShowAuthModal(true)}
+            >
+              <UserPlus size={20} />
+              Se connecter
+            </button>
+          )}
+        </div>
+      </Header>
 
       <div className="content-section">
         <div className="container">
@@ -2914,6 +3016,40 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
         {/* Hero Section */}
         <div className="hero-section">
           <div className="hero-content">
+            {/* Bouton de connexion */}
+            <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
+              {user ? (
+                <UserButton 
+                  user={user} 
+                  onSignOut={handleSignOut}
+                />
+              ) : (
+                <button 
+                  className="login-button"
+                  onClick={() => {
+                    console.log('🔄 Clic sur le bouton Se connecter');
+                    setShowAuthModal(true);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.5rem 1rem',
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    fontSize: '0.875rem',
+                    fontWeight: '500'
+                  }}
+                >
+                  <UserPlus size={18} />
+                  Se connecter
+                </button>
+              )}
+            </div>
             <h1 className="hero-title">
               <span className="gradient-text">Oroyo</span>
             </h1>
@@ -2924,6 +3060,52 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
         </div>
 
         {/* Barre de statistiques */}
+        {/* En-tête principal avec slogan */}
+        <div className="main-header" style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '2rem',
+          backgroundColor: '#1e293b',
+          borderBottom: '1px solid #334155',
+          marginBottom: '2rem'
+        }}>
+          <div className="slogan-container" style={{
+            textAlign: 'center'
+          }}>
+            <h1 className="slogan-text" style={{
+              color: '#e2e8f0',
+              fontSize: 'clamp(1.5rem, 4vw, 2.5rem)',
+              fontWeight: '700',
+              margin: 0,
+              letterSpacing: '0.05em',
+              textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+              background: 'linear-gradient(135deg, #60A5FA, #818CF8, #A78BFA)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              animation: 'sloganGlow 3s ease-in-out infinite alternate'
+            }}>
+              A Nou Mem Ke Nou Mem
+            </h1>
+            <div style={{
+              width: '100px',
+              height: '2px',
+              background: 'linear-gradient(90deg, transparent, #60A5FA, transparent)',
+              margin: '0.5rem auto',
+              borderRadius: '1px'
+            }}></div>
+          </div>
+        </div>
+
+        {/* Modal d'authentification */}
+        {showAuthModal && (
+          <AuthModal
+            onClose={() => setShowAuthModal(false)}
+            onSuccess={handleAuthSuccess}
+          />
+        )}
+
         <div className="stats-bar">
           <div className="stat">
             <span className="stat-number">22</span>
@@ -2938,8 +3120,6 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
             <span>Citoyens</span>
           </div>
         </div>
-
-        
 
         {/* Menu de navigation en bulles */}
         <nav className="menu-bubble-bar">
@@ -3007,6 +3187,24 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
             Popularité
           </button>
         </nav>
+
+        {/* Header avec bouton de connexion */}
+        <Header
+          title="Communes de Guyane"
+          subtitle="Découvrez les 22 communes de Guyane"
+          currentScreen={currentScreen}
+          setCurrentScreen={setCurrentScreen}
+          setCurrentTab={setCurrentTab}
+          showMiniNav={showMiniNav}
+        />
+
+        {/* Modal d'authentification */}
+        {showAuthModal && (
+          <AuthModal
+            onClose={() => setShowAuthModal(false)}
+            onSuccess={handleAuthSuccess}
+          />
+        )}
 
         {/* Contenu selon l'onglet sélectionné */}
         <div className="content-section">
@@ -3504,7 +3702,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
           <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
             <div className="header-nav" style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
             <button
-              onClick={() => setCurrentScreen('home')}
+              onClick={() => setCurrentScreen('communes')}
                 className="btn-back-modern"
                 style={{
                   display: 'flex',
@@ -3533,29 +3731,193 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
           </div>
         </div>
 
-        <div className="content-section" style={{padding: '2rem 0'}}>
-          <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
-            <div className="postes-grid-modern">
-            {postes.map((poste) => (
-                <div
-                key={poste.id}
+        <div className="content-section" style={{ padding: '2rem 0' }}>
+          <div className="container" style={{ maxWidth: '800px', margin: '0 auto', padding: '0 1rem' }}>
+            <div className="postes-grid-modern" style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '1.5rem',
+              padding: '1rem 0'
+            }}>
+              {/* Maire */}
+              <div
                 onClick={() => {
-                  setSelectedPoste(poste);
+                  setSelectedPoste({ id: 'maire', name: 'Maire', description: 'Le maire de la commune' });
                   setCurrentScreen('elus');
                 }}
-                  className="poste-card-modern"
-                  style={{
-                    background: `linear-gradient(135deg, ${poste.color}20, ${poste.color}10)`,
-                    border: `1px solid ${poste.color}40`
-                  }}
-                >
-                  <div className="poste-icon-modern" style={{backgroundColor: poste.color}}>
-                    <span className="poste-icon">{poste.icon}</span>
-                  </div>
-                  <h3 className="poste-title">{poste.name}</h3>
-                  <p className="poste-description">{poste.description}</p>
-                  </div>
-            ))}
+                className="poste-card-modern"
+                style={{
+                  backgroundColor: '#1e293b',
+                  border: '2px solid #334155',
+                  borderRadius: '16px',
+                  padding: '2rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  minHeight: '200px',
+                  justifyContent: 'center'
+                }}
+              >
+                <div className="poste-icon-wrapper" style={{
+                  width: '80px',
+                  height: '80px',
+                  backgroundColor: '#3b82f6',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '1rem',
+                  boxShadow: '0 4px 15px rgba(59, 130, 246, 0.3)'
+                }}>
+                  <Crown size={32} style={{ color: 'white' }} />
+                </div>
+                <h3 style={{
+                  color: '#e2e8f0',
+                  fontSize: '1.25rem',
+                  fontWeight: '600',
+                  margin: 0
+                }}>
+                  Maire
+                </h3>
+              </div>
+
+              {/* Adjoints au Maire */}
+              <div
+                onClick={() => {
+                  setSelectedPoste({ id: 'adjoints', name: 'Adjoints au Maire', description: 'Les adjoints au maire' });
+                  setCurrentScreen('elus');
+                }}
+                className="poste-card-modern"
+                style={{
+                  backgroundColor: '#1e293b',
+                  border: '2px solid #334155',
+                  borderRadius: '16px',
+                  padding: '2rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  minHeight: '200px',
+                  justifyContent: 'center'
+                }}
+              >
+                <div className="poste-icon-wrapper" style={{
+                  width: '80px',
+                  height: '80px',
+                  backgroundColor: '#8b5cf6',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '1rem',
+                  boxShadow: '0 4px 15px rgba(139, 92, 246, 0.3)'
+                }}>
+                  <Users size={32} style={{ color: 'white' }} />
+                </div>
+                <h3 style={{
+                  color: '#e2e8f0',
+                  fontSize: '1.25rem',
+                  fontWeight: '600',
+                  margin: 0
+                }}>
+                  Adjoints au Maire
+                </h3>
+              </div>
+
+              {/* Conseillers Municipaux */}
+              <div
+                onClick={() => {
+                  setSelectedPoste({ id: 'conseillers-municipaux', name: 'Conseillers Municipaux', description: 'Les conseillers municipaux' });
+                  setCurrentScreen('elus');
+                }}
+                className="poste-card-modern"
+                style={{
+                  backgroundColor: '#1e293b',
+                  border: '2px solid #334155',
+                  borderRadius: '16px',
+                  padding: '2rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  minHeight: '200px',
+                  justifyContent: 'center'
+                }}
+              >
+                <div className="poste-icon-wrapper" style={{
+                  width: '80px',
+                  height: '80px',
+                  backgroundColor: '#a855f7',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '1rem',
+                  boxShadow: '0 4px 15px rgba(168, 85, 247, 0.3)'
+                }}>
+                  <Building size={32} style={{ color: 'white' }} />
+                </div>
+                <h3 style={{
+                  color: '#e2e8f0',
+                  fontSize: '1.25rem',
+                  fontWeight: '600',
+                  margin: 0
+                }}>
+                  Conseillers Municipaux
+                </h3>
+              </div>
+
+              {/* Conseillers Intercommunaux */}
+              <div
+                onClick={() => {
+                  setSelectedPoste({ id: 'conseillers-intercommunaux', name: 'Conseillers Intercommunaux', description: 'Les conseillers intercommunaux' });
+                  setCurrentScreen('elus');
+                }}
+                className="poste-card-modern"
+                style={{
+                  backgroundColor: '#1e293b',
+                  border: '2px solid #334155',
+                  borderRadius: '16px',
+                  padding: '2rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  minHeight: '200px',
+                  justifyContent: 'center'
+                }}
+              >
+                <div className="poste-icon-wrapper" style={{
+                  width: '80px',
+                  height: '80px',
+                  backgroundColor: '#ec4899',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '1rem',
+                  boxShadow: '0 4px 15px rgba(236, 72, 153, 0.3)'
+                }}>
+                  <Globe2 size={32} style={{ color: 'white' }} />
+                </div>
+                <h3 style={{
+                  color: '#e2e8f0',
+                  fontSize: '1.25rem',
+                  fontWeight: '600',
+                  margin: 0
+                }}>
+                  Conseillers<br/>Intercommunaux
+                </h3>
+              </div>
             </div>
           </div>
         </div>
@@ -4175,119 +4537,119 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
               borderRadius: '16px',
               padding: '2rem',
               marginTop: '2rem'
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1rem',
-                marginBottom: '1.5rem'
               }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                gap: '1rem',
+                  marginBottom: '1.5rem'
+                }}>
                 <Newspaper size={24} style={{ color: '#3b82f6' }} />
                 <h2 style={{
-                  color: '#e2e8f0',
+                    color: '#e2e8f0',
                   fontSize: '1.5rem',
                   fontWeight: '600',
                   margin: 0
-                }}>
-                  Actualités récentes
+                  }}>
+                    Actualités récentes
                 </h2>
-              </div>
-
-              {loadingNews ? (
-                <div style={{
-                  textAlign: 'center',
-                  padding: '2rem',
-                  color: '#94a3b8'
-                }}>
-                  Chargement des actualités...
                 </div>
-              ) : news.length > 0 ? (
-                <div style={{
+
+                {loadingNews ? (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '2rem',
+                    color: '#94a3b8'
+                  }}>
+                    Chargement des actualités...
+                  </div>
+                ) : news.length > 0 ? (
+                  <div style={{
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '1.5rem'
-                }}>
-                  {news.map((article, index) => (
-                    <a
+                  }}>
+                    {news.map((article, index) => (
+                      <a 
                       key={article.id}
-                      href={article.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        textDecoration: 'none',
+                        href={article.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          textDecoration: 'none',
                         color: 'inherit',
                         display: 'block',
                         padding: '1rem',
                         backgroundColor: 'rgba(30, 41, 59, 0.5)',
                         borderRadius: '12px',
                         transition: 'all 0.2s ease'
-                      }}
-                    >
-                      <div style={{
-                        display: 'flex',
-                        gap: '1rem',
+                        }}
+                      >
+                        <div style={{
+                          display: 'flex',
+                          gap: '1rem',
                         alignItems: 'flex-start'
-                      }}>
-                        {article.imageUrl && (
-                          <img
-                            src={article.imageUrl}
-                            alt={article.title}
-                            style={{
-                              width: '120px',
-                              height: '80px',
-                              objectFit: 'cover',
-                              borderRadius: '8px'
-                            }}
-                          />
-                        )}
-                        <div>
-                          <h4 style={{
-                            color: '#e2e8f0',
-                            fontSize: '1rem',
-                            fontWeight: '600',
-                            marginBottom: '0.5rem'
-                          }}>
-                            {article.title}
-                          </h4>
-                          <p style={{
-                            color: '#94a3b8',
-                            fontSize: '0.875rem',
-                            marginBottom: '0.5rem',
-                            display: '-webkit-box',
-                            WebkitLineClamp: '2',
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden'
-                          }}>
-                            {article.description}
-                          </p>
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
+                        }}>
+                          {article.imageUrl && (
+                            <img 
+                              src={article.imageUrl}
+                              alt={article.title}
+                              style={{
+                                width: '120px',
+                                height: '80px',
+                                objectFit: 'cover',
+                                borderRadius: '8px'
+                              }}
+                            />
+                          )}
+                          <div>
+                            <h4 style={{
+                              color: '#e2e8f0',
+                              fontSize: '1rem',
+                              fontWeight: '600',
+                              marginBottom: '0.5rem'
+                            }}>
+                              {article.title}
+                            </h4>
+                            <p style={{
+                              color: '#94a3b8',
+                              fontSize: '0.875rem',
+                              marginBottom: '0.5rem',
+                              display: '-webkit-box',
+                              WebkitLineClamp: '2',
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden'
+                            }}>
+                              {article.description}
+                            </p>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
                             gap: '0.5rem',
-                            color: '#64748b',
-                            fontSize: '0.75rem'
-                          }}>
-                            <span>{article.source}</span>
-                            <span>•</span>
-                            <span>{article.publishedAt}</span>
+                              color: '#64748b',
+                              fontSize: '0.75rem'
+                            }}>
+                              <span>{article.source}</span>
+                              <span>•</span>
+                              <span>{article.publishedAt}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              ) : (
-                <div style={{
-                  textAlign: 'center',
-                  padding: '2rem',
-                  color: '#94a3b8',
-                  backgroundColor: 'rgba(30, 41, 59, 0.5)',
-                  borderRadius: '12px'
-                }}>
-                  Aucune actualité récente trouvée pour cet élu.
-                </div>
-              )}
-            </div>
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '2rem',
+                    color: '#94a3b8',
+                    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+                    borderRadius: '12px'
+                  }}>
+                    Aucune actualité récente trouvée pour cet élu.
+                  </div>
+            )}
+          </div>
 
             {/* Actions */}
             <div className="actions-section-modern">
@@ -4327,7 +4689,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
           id: Date.now().toString(),
           type: messageType,
           text: message,
-          author: isAnonymous ? 'Anonyme' : 'Citoyen guyanais',
+          author: user?.isAnonymous ? 'Anonyme' : 'Citoyen guyanais',
           likes: 0,
           eluId: selectedElu.id,
           eluName: selectedElu.name,
@@ -4469,7 +4831,33 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
           currentScreen={currentScreen}
           setCurrentScreen={setCurrentScreen}
           setCurrentTab={setCurrentTab}
-        />
+          showMiniNav={showMiniNav}
+        >
+          <div className="header-right">
+            {user ? (
+              <UserButton 
+                user={user} 
+                onSignOut={handleSignOut}
+              />
+            ) : (
+              <button 
+                className="login-button"
+                onClick={() => setShowAuthModal(true)}
+              >
+                <UserPlus size={20} />
+                Se connecter
+              </button>
+            )}
+          </div>
+        </Header>
+
+        {/* Modal d'authentification */}
+        {showAuthModal && (
+          <AuthModal
+            onClose={() => setShowAuthModal(false)}
+            onSuccess={handleAuthSuccess}
+          />
+        )}
 
         <div className="content-section">
           <div className="container">
@@ -4560,7 +4948,33 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
           currentScreen={currentScreen}
           setCurrentScreen={setCurrentScreen}
           setCurrentTab={setCurrentTab}
-        />
+          showMiniNav={showMiniNav}
+        >
+          <div className="header-right">
+            {user ? (
+              <UserButton 
+                user={user} 
+                onSignOut={handleSignOut}
+              />
+            ) : (
+              <button 
+                className="login-button"
+                onClick={() => setShowAuthModal(true)}
+              >
+                <UserPlus size={20} />
+                Se connecter
+              </button>
+            )}
+          </div>
+        </Header>
+
+        {/* Modal d'authentification */}
+        {showAuthModal && (
+          <AuthModal
+            onClose={() => setShowAuthModal(false)}
+            onSuccess={handleAuthSuccess}
+          />
+        )}
 
         <div className="content-section">
           <div className="container">
@@ -4639,7 +5053,33 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
           currentScreen={currentScreen}
           setCurrentScreen={setCurrentScreen}
           setCurrentTab={setCurrentTab}
-        />
+          showMiniNav={showMiniNav}
+        >
+          <div className="header-right">
+            {user ? (
+              <UserButton 
+                user={user} 
+                onSignOut={handleSignOut}
+              />
+            ) : (
+              <button 
+                className="login-button"
+                onClick={() => setShowAuthModal(true)}
+              >
+                <UserPlus size={20} />
+                Se connecter
+              </button>
+            )}
+          </div>
+        </Header>
+
+        {/* Modal d'authentification */}
+        {showAuthModal && (
+          <AuthModal
+            onClose={() => setShowAuthModal(false)}
+            onSuccess={handleAuthSuccess}
+          />
+        )}
 
         <div className="content-section">
           <div className="container">
@@ -4718,7 +5158,33 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
           currentScreen={currentScreen}
           setCurrentScreen={setCurrentScreen}
           setCurrentTab={setCurrentTab}
-        />
+          showMiniNav={showMiniNav}
+        >
+          <div className="header-right">
+            {user ? (
+              <UserButton 
+                user={user} 
+                onSignOut={handleSignOut}
+              />
+            ) : (
+              <button 
+                className="login-button"
+                onClick={() => setShowAuthModal(true)}
+              >
+                <UserPlus size={20} />
+                Se connecter
+              </button>
+            )}
+          </div>
+        </Header>
+
+        {/* Modal d'authentification */}
+        {showAuthModal && (
+          <AuthModal
+            onClose={() => setShowAuthModal(false)}
+            onSuccess={handleAuthSuccess}
+          />
+        )}
 
         <div className="content-section">
           <div className="container">
@@ -4792,7 +5258,178 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
     );
   }
 
-  return null;
+  // Fonctions d'authentification - À ajouter avant le return
+  const handleFacebookSignIn = async () => {
+    setAuthLoading(true);
+    setAuthError('');
+    try {
+      const provider = new FacebookAuthProvider();
+      await signInWithPopup(auth, provider);
+      setShowAuthModal(false);
+    } catch (error) {
+      setAuthError('Erreur connexion Facebook: ' + error.message);
+    }
+    setAuthLoading(false);
+  };
+
+  const handleAnonymousSignIn = async () => {
+    setAuthLoading(true);
+    try {
+      await signInAnonymously(auth);
+    } catch (error) {
+      setAuthError('Erreur connexion anonyme');
+    }
+    setAuthLoading(false);
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError('');
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      setShowAuthModal(false);
+      setEmail('');
+      setPassword('');
+    } catch (error) {
+      setAuthError('Erreur connexion: ' + error.message);
+    }
+    setAuthLoading(false);
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError('');
+    try {
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(result.user, {
+        displayName: displayName || 'Citoyen Guyanais'
+      });
+      setShowAuthModal(false);
+      setEmail('');
+      setPassword('');
+      setDisplayName('');
+    } catch (error) {
+      setAuthError('Erreur inscription: ' + error.message);
+    }
+    setAuthLoading(false);
+  };
+
+  // ÉCRAN D'ACCUEIL (HOME)
+  return (
+    <div className="app-modern">
+      <Header
+        title="Oroyo"
+        subtitle="Découvrez les élus de la Guyane"
+        currentScreen={currentScreen}
+        setCurrentScreen={setCurrentScreen}
+        setCurrentTab={setCurrentTab}
+        showMiniNav={showMiniNav}
+      >
+        <div className="header-right">
+          {user ? (
+            <UserButton 
+              user={user} 
+              onSignOut={handleSignOut}
+            />
+          ) : (
+            <button 
+              className="login-button"
+              onClick={() => setShowAuthModal(true)}
+            >
+              <UserPlus size={20} />
+              Se connecter
+            </button>
+          )}
+        </div>
+      </Header>
+
+      {/* Modal d'authentification */}
+      {showAuthModal && (
+        <AuthModal
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleAuthSuccess}
+        />
+      )}
+
+      <div className="content-section">
+        <div className="container">
+          <div className="menu-bubble-bar">
+            <div 
+              className="menu-bubble" 
+              data-type="communes"
+              onClick={() => setCurrentScreen('communes')}
+            >
+              <div className="bubble-icon-wrapper">
+                <Building className="bubble-icon" />
+              </div>
+              <h3>Communes</h3>
+              <p>Les 22 communes de Guyane</p>
+            </div>
+
+            <div 
+              className="menu-bubble" 
+              data-type="maires"
+              onClick={() => setCurrentScreen('maires')}
+            >
+              <div className="bubble-icon-wrapper">
+                <Crown className="bubble-icon" />
+              </div>
+              <h3>Maires</h3>
+              <p>Les maires de Guyane</p>
+            </div>
+
+            <div 
+              className="menu-bubble" 
+              data-type="deputes"
+              onClick={() => setCurrentScreen('deputes')}
+            >
+              <div className="bubble-icon-wrapper">
+                <Vote className="bubble-icon" />
+              </div>
+              <h3>Députés</h3>
+              <p>Les députés de Guyane</p>
+            </div>
+
+            <div 
+              className="menu-bubble" 
+              data-type="senateurs"
+              onClick={() => setCurrentScreen('senateurs')}
+            >
+              <div className="bubble-icon-wrapper">
+                <Scale className="bubble-icon" />
+              </div>
+              <h3>Sénateurs</h3>
+              <p>Les sénateurs de Guyane</p>
+            </div>
+
+            <div 
+              className="menu-bubble" 
+              data-type="ctg"
+              onClick={() => setCurrentScreen('ctg')}
+            >
+              <div className="bubble-icon-wrapper">
+                <Landmark className="bubble-icon" />
+              </div>
+              <h3>CTG</h3>
+              <p>Conseillers territoriaux</p>
+            </div>
+          </div>
+
+          {/* Section des élus les mieux notés */}
+          {elus.length > 0 && (
+            <RankingSection
+              title="🏆 Les élus les mieux notés"
+              elus={getTopRatedElus(elus)}
+              setSelectedElu={setSelectedElu}
+              setCurrentScreen={setCurrentScreen}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default App;
