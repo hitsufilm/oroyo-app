@@ -40,6 +40,14 @@ const Header = ({ title, subtitle, currentScreen, setCurrentScreen, setCurrentTa
           <div className="tooltip">Communes</div>
         </button>
         <button 
+          className={`mini-nav-item ${currentScreen === 'maires' ? 'active' : ''}`}
+          onClick={() => setCurrentScreen('maires')}
+          data-tooltip="Maires"
+        >
+          <Crown className="mini-nav-icon" />
+          <div className="tooltip">Maires</div>
+        </button>
+        <button 
           className={`mini-nav-item ${currentScreen === 'deputes' ? 'active' : ''}`}
           onClick={() => setCurrentScreen('deputes')}
           data-tooltip="Députés"
@@ -2723,6 +2731,16 @@ const importConseillersTerritoriaux = async () => {
             Communes
           </button>
           <button 
+            className={`menu-bubble ${currentScreen === 'maires' ? 'active' : ''}`}
+            onClick={() => setCurrentScreen('maires')}
+            data-type="maires"
+          >
+            <div className="bubble-icon-wrapper">
+              <Crown className="bubble-icon" />
+            </div>
+            Maires
+          </button>
+          <button 
             className={`menu-bubble ${currentScreen === 'deputes' ? 'active' : ''}`}
             onClick={() => setCurrentScreen('deputes')}
             data-type="deputes"
@@ -3989,110 +4007,93 @@ const importConseillersTerritoriaux = async () => {
   if (currentScreen === 'maires') {
     // Juste avant le return ou l'utilisation de 'maires'
     const maires = elus.filter((elu) => elu.poste === 'Maire');
+    const filteredMaires = maires.filter(maire => 
+      maire.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (maire.commune && maire.commune.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
 
     return (
       <div className="app-modern">
-        <div className="header-modern" style={{
-          backgroundColor: '#1e293b',
-          borderBottom: '1px solid #334155',
-          padding: '1rem 0'
-        }}>
-          <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
-            <div className="header-nav" style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-              <button 
-                onClick={() => setCurrentScreen('home')} 
-                className="btn-back-modern"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  backgroundColor: '#374151',
-                  color: '#e5e7eb',
-                  padding: '0.5rem 1rem',
-                  borderRadius: '8px',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                <ArrowLeft size={20} />
-                Retour
-              </button>
-              <div className="header-info">
-                <h1 className="header-title" style={{color: '#e2e8f0', fontSize: '1.5rem', fontWeight: '700', margin: 0}}>
-                  Maires de Guyane
-                </h1>
-                <p className="header-subtitle" style={{color: '#94a3b8', fontSize: '0.875rem', margin: 0}}>
-                  Recherchez un maire par nom ou par commune
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <Header 
+          title="Maires"
+          subtitle="Liste des maires de Guyane"
+          currentScreen={currentScreen}
+          setCurrentScreen={setCurrentScreen}
+          setCurrentTab={setCurrentTab}
+        />
 
         <div className="content-section">
           <div className="container">
-            <div className="section-header-modern">
-              <h2>Les Maires de Guyane</h2>
-              <div className="search-box-modern">
-                <Search className="search-icon" />
+            {/* Barre de recherche */}
+            <div className="search-bar-modern">
+              <Search className="search-icon" size={20} />
                   <input
-                  type="text"
-                  placeholder="Rechercher un maire..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
+                type="text"
+                placeholder="Rechercher un maire..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem 1rem 0.75rem 2.5rem',
+                  backgroundColor: '#1e293b',
+                  border: '1px solid #334155',
+                  borderRadius: '8px',
+                  color: '#e2e8f0',
+                  fontSize: '0.875rem'
+                }}
+              />
             </div>
 
+            {/* Grille des maires */}
             <div className="elus-grid-modern">
-              {maires
-                .filter(maire => 
-                  maire.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  maire.commune.toLowerCase().includes(searchTerm.toLowerCase())
-                )
-                .map((maire) => (
-                  <div key={maire.id} className="elu-card-modern">
-                    <div className="elu-header">
-                      <div className="elu-avatar-modern" style={{backgroundColor: '#f59e0b'}}>
-                        <UserCheck size={32} />
-                      </div>
-                      <div className="elu-info-modern">
-                        <h3>{maire.name}</h3>
-                        <p>Maire de {maire.commune}</p>
-                        <div className="elu-badges">
-                          <span className="badge badge-parti">{maire.parti}</span>
-                          <span className="badge badge-mandat">{maire.mandat}</span>
-                        </div>
-                      </div>
+              {filteredMaires.map((maire) => (
+                <div 
+                  key={maire.id} 
+                  className="elu-card-modern"
+                  onClick={() => {
+                    setSelectedElu(maire);
+                    setCurrentScreen('profil');
+                  }}
+                >
+                  <div className="elu-header">
+                    <div className="elu-avatar-modern" style={{
+                      backgroundColor: '#F59E0B',
+                      borderRadius: '50%',
+                      padding: '1rem',
+                      color: 'white'
+                    }}>
+                      <Crown size={32} />
                     </div>
-                    
-                    <div className="elu-details">
-                      {maire.fonction_speciale && (
-                        <p><strong>Fonction :</strong> {maire.fonction_speciale}</p>
-                      )}
-                      {maire.particularite && (
-                        <p className="particularite">⭐ {maire.particularite}</p>
-                      )}
+                    <div className="elu-info-modern">
+                      <h3 style={{
+                        color: '#e2e8f0',
+                        fontSize: '1.1rem',
+                        fontWeight: '600',
+                        marginBottom: '0.25rem'
+                      }}>
+                        {maire.name}
+                      </h3>
+                      <p style={{color: '#94a3b8', fontSize: '0.875rem'}}>
+                        Maire de {maire.commune}
+                      </p>
                     </div>
-
-                    <div className="elu-rating-modern">
-                      <StarRating rating={maire.rating || 0} />
-                      <span className="rating-text">
-                        {maire.rating || 0}/5 ({maire.totalVotes || 0} votes)
-                  </span>
-              </div>
-
-                <button
-                      className="btn-main btn-orange"
-                      onClick={() => {
-                        setSelectedElu(maire);
-                        setCurrentScreen('profil');
-                      }}
-                    >
-                      Voir le profil complet
-                </button>
                   </div>
-                ))}
+                  
+                  {/* Badges et informations supplémentaires */}
+                  <div className="elu-badges">
+                    {maire.parti && (
+                      <span className="badge badge-parti">
+                        {maire.parti}
+                  </span>
+                    )}
+                    {maire.mandat && (
+                      <span className="badge badge-mandat">
+                        {maire.mandat}
+                      </span>
+                    )}
+              </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -4240,7 +4241,7 @@ const importConseillersTerritoriaux = async () => {
                       </span>
                     </div>
                     
-                    <button 
+                <button
                       className="btn-main btn-purple"
                       onClick={() => {
                         setSelectedElu(senateur);
@@ -4248,8 +4249,8 @@ const importConseillersTerritoriaux = async () => {
                       }}
                     >
                       Voir le profil
-                    </button>
-                  </div>
+                </button>
+              </div>
                 ))}
             </div>
           </div>
