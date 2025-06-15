@@ -2843,35 +2843,27 @@ const importConseillersTerritoriaux = async () => {
                   padding: '2rem',
                   marginBottom: '2rem'
                 }}>
+                  // ...
                   <h2 style={{color: '#e2e8f0', marginBottom: '1rem'}}>🗳️ Députés de la Guyane</h2>
                   <p style={{color: '#94a3b8', fontSize: '0.875rem'}}>
                     Les 2 députés représentent la Guyane à l'Assemblée nationale
                   </p>
                   
-                  {/* Bouton d'import */}
-                  <div style={{marginTop: '1rem'}}>
-                    <button 
-                      onClick={importElusNationaux}
-                      disabled={importingElus}
-                      style={{
-                        backgroundColor: importingElus ? '#6b7280' : '#10b981',
-                        color: 'white',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        border: 'none',
-                        cursor: importingElus ? 'not-allowed' : 'pointer',
-                        fontSize: '0.9rem',
-                        fontWeight: 'bold',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem'
-                      }}
-                    >
-                      <UserPlus size={18} />
-                      {importingElus ? '⏳ Import en cours...' : '🚀 IMPORTER LES DÉPUTÉS'}
-                    </button>
-                  </div>
+                  {/* -- MODIFICATION ICI -- */}
+                  {deputes.length === 0 && (
+                    <div style={{marginTop: '1rem'}}>
+                      <button 
+                        onClick={importElusNationaux}
+                        // ... autres propriétés
+                      >
+                        <UserPlus size={18} />
+                        {importingElus ? '⏳ Import en cours...' : '🚀 IMPORTER LES DÉPUTÉS'}
+                      </button>
+                    </div>
+                  )}
+                  {/* -- FIN DE LA MODIFICATION -- */}
                 </div>
+
 
                 <div className="elus-grid-modern" style={{
                   display: 'grid',
@@ -2974,35 +2966,27 @@ const importConseillersTerritoriaux = async () => {
                   padding: '2rem',
                   marginBottom: '2rem'
                 }}>
+                  // ...
                   <h2 style={{color: '#e2e8f0', marginBottom: '1rem'}}>⚖️ Sénateurs de la Guyane</h2>
                   <p style={{color: '#94a3b8', fontSize: '0.875rem'}}>
                     Les 2 sénateurs représentent la Guyane au Sénat
                   </p>
                   
-                  {/* Bouton d'import */}
-                  <div style={{marginTop: '1rem'}}>
-                    <button 
-                      onClick={importElusNationaux}
-                      disabled={importingElus}
-                      style={{
-                        backgroundColor: importingElus ? '#6b7280' : '#10b981',
-                        color: 'white',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        border: 'none',
-                        cursor: importingElus ? 'not-allowed' : 'pointer',
-                        fontSize: '0.9rem',
-                        fontWeight: 'bold',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem'
-                      }}
-                    >
-                      <UserPlus size={18} />
-                      {importingElus ? '⏳ Import en cours...' : '🚀 IMPORTER LES SÉNATEURS'}
-                    </button>
-                  </div>
+                  {/* -- MODIFICATION ICI -- */}
+                  {senateurs.length === 0 && (
+                    <div style={{marginTop: '1rem'}}>
+                      <button 
+                        onClick={importElusNationaux}
+                        // ... autres propriétés
+                      >
+                        <UserPlus size={18} />
+                        {importingElus ? '⏳ Import en cours...' : '🚀 IMPORTER LES SÉNATEURS'}
+                      </button>
+                    </div>
+                  )}
+                  {/* -- FIN DE LA MODIFICATION -- */}
                 </div>
+
 
                 <div className="elus-grid-modern" style={{
                   display: 'grid',
@@ -3109,35 +3093,27 @@ const importConseillersTerritoriaux = async () => {
                   padding: '2rem',
                   marginBottom: '2rem'
                 }}>
+                  // ...
                   <h2 style={{color: '#e2e8f0', marginBottom: '1rem'}}>🌐 Conseillers Territoriaux de Guyane</h2>
                   <p style={{color: '#94a3b8', fontSize: '0.875rem'}}>
                     L'Assemblée de Guyane compte 51 conseillers territoriaux
                   </p>
                   
-                  {/* Bouton d'import */}
-                  <div style={{marginTop: '1rem'}}>
-                    <button 
-                      onClick={importElusNationaux}
-                      disabled={importingElus}
-                      style={{
-                        backgroundColor: importingElus ? '#6b7280' : '#10b981',
-                        color: 'white',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        border: 'none',
-                        cursor: importingElus ? 'not-allowed' : 'pointer',
-                        fontSize: '0.9rem',
-                        fontWeight: 'bold',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem'
-                      }}
-                    >
-                      <UserPlus size={18} />
-                      {importingElus ? '⏳ Import en cours...' : '🚀 IMPORTER LES CONSEILLERS'}
-                    </button>
-                  </div>
+                  {/* -- MODIFICATION ICI -- */}
+                  {conseillers.length === 0 && (
+                    <div style={{marginTop: '1rem'}}>
+                      <button 
+                        onClick={importElusNationaux}
+                        // ... autres propriétés
+                      >
+                        <UserPlus size={18} />
+                        {importingElus ? '⏳ Import en cours...' : '🚀 IMPORTER LES CONSEILLERS'}
+                      </button>
+                    </div>
+                  )}
+                  {/* -- FIN DE LA MODIFICATION -- */}
                 </div>
+
 
                 <div className="elus-grid-modern" style={{
                   display: 'grid',
