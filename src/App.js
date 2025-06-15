@@ -1,8 +1,98 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ChevronDown, Users, ArrowLeft, Star, MessageCircle, Send, ThumbsUp, MapPin, Download, UserPlus, Home, Building, Crown, Globe2, Scale, Vote, UserCheck } from 'lucide-react';
+import { Search, ChevronDown, Users, ArrowLeft, Star, MessageCircle, Send, ThumbsUp, MapPin, Download, UserPlus, Home, Building, Crown, Globe2, Scale, Vote, UserCheck, Map, Landmark } from 'lucide-react';
 import { db } from './firebase';
 import { collection, getDocs, setDoc, doc } from 'firebase/firestore';
 import './AppModern.css';
+
+// Fonction de tri des élus par note
+const getTopRatedElus = (elusList, limit = 5) => {
+  return [...elusList]
+    .filter(elu => elu.rating) // Filtrer les élus qui ont une note
+    .sort((a, b) => b.rating - a.rating) // Trier par note décroissante
+    .slice(0, limit); // Limiter le nombre d'élus retournés
+};
+
+// Composant pour afficher le classement
+const RankingSection = ({ title, elus, setSelectedElu, setCurrentScreen }) => {
+  return (
+    <div className="ranking-section" style={{
+      background: 'rgba(30, 41, 59, 0.5)',
+      borderRadius: '16px',
+      padding: '1.5rem',
+      marginBottom: '2rem'
+    }}>
+      <h2 style={{
+        color: '#e2e8f0',
+        fontSize: '1.5rem',
+        fontWeight: '600',
+        marginBottom: '1rem'
+      }}>{title}</h2>
+      <div className="ranking-list" style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem'
+      }}>
+        {elus.map((elu, index) => (
+          <div
+            key={elu.id}
+            className="ranking-item"
+            onClick={() => {
+              setSelectedElu(elu);
+              setCurrentScreen('profil');
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem',
+              background: 'rgba(30, 41, 59, 0.7)',
+              padding: '1rem',
+              borderRadius: '12px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              background: index === 0 ? '#FCD34D' : index === 1 ? '#94A3B8' : index === 2 ? '#B45309' : '#1E293B',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#fff',
+              fontWeight: 'bold',
+              fontSize: '1.1rem'
+            }}>
+              {index + 1}
+            </div>
+            <div style={{flex: 1}}>
+              <div style={{
+                color: '#e2e8f0',
+                fontWeight: '600',
+                fontSize: '1.1rem'
+              }}>{elu.name}</div>
+              <div style={{
+                color: '#94a3b8',
+                fontSize: '0.875rem'
+              }}>{elu.poste} {elu.commune ? `de ${elu.commune}` : ''}</div>
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              color: '#FCD34D'
+            }}>
+              <Star size={20} fill="#FCD34D" />
+              <span style={{fontWeight: '600'}}>{elu.rating.toFixed(1)}</span>
+              <span style={{color: '#94a3b8', fontSize: '0.875rem'}}>({elu.totalVotes} votes)</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 // Header Component
 const Header = ({ title, subtitle, currentScreen, setCurrentScreen, setCurrentTab }) => {
@@ -71,6 +161,14 @@ const Header = ({ title, subtitle, currentScreen, setCurrentScreen, setCurrentTa
           <Globe2 className="mini-nav-icon" />
           <div className="tooltip">CTG</div>
         </button>
+        <button 
+          className={`mini-nav-item ${currentScreen === 'popularite' ? 'active' : ''}`}
+          onClick={() => setCurrentScreen('popularite')}
+          data-tooltip="Popularité"
+        >
+          <Star className="mini-nav-icon" />
+          <div className="tooltip">Popularité</div>
+        </button>
       </nav>
     </>
   );
@@ -99,6 +197,7 @@ function App() {
   const [error, setError] = useState(null);
   const [avisLocaux, setAvisLocaux] = useState([]);
   const [importingElus, setImportingElus] = useState(false);
+  const [sortOrder, setSortOrder] = useState('desc'); // 'desc' pour décroissant (par défaut), 'asc' pour croissant
 
   // DONNÉES DES DÉPUTÉS
   const deputesData = [
@@ -2684,7 +2783,64 @@ const importConseillersTerritoriaux = async () => {
   );
 
   // ÉCRAN HOME MODERNE
-  if (currentScreen === 'home' || currentScreen === 'communes') {
+  if (currentScreen === 'popularite') {
+  // Obtenir les meilleurs élus de chaque catégorie
+  const topMaires = getTopRatedElus(elus.filter(elu => elu.poste === 'Maire'));
+  const topDeputes = getTopRatedElus(deputesData);
+  const topSenateurs = getTopRatedElus(senateursData);
+  const topConseillers = getTopRatedElus(conseillers);
+
+  return (
+    <div className="app-modern">
+      <Header 
+        title="Popularité"
+        subtitle="Classement des élus les mieux notés"
+        currentScreen={currentScreen}
+        setCurrentScreen={setCurrentScreen}
+        setCurrentTab={setCurrentTab}
+      />
+
+      <div className="content-section">
+        <div className="container">
+          {topMaires.length > 0 && (
+            <RankingSection
+              title="🏆 Top Maires les mieux notés"
+              elus={topMaires}
+              setSelectedElu={setSelectedElu}
+              setCurrentScreen={setCurrentScreen}
+            />
+          )}
+          {topDeputes.length > 0 && (
+            <RankingSection
+              title="🏆 Top Députés les mieux notés"
+              elus={topDeputes}
+              setSelectedElu={setSelectedElu}
+              setCurrentScreen={setCurrentScreen}
+            />
+          )}
+          {topSenateurs.length > 0 && (
+            <RankingSection
+              title="🏆 Top Sénateurs les mieux notés"
+              elus={topSenateurs}
+              setSelectedElu={setSelectedElu}
+              setCurrentScreen={setCurrentScreen}
+            />
+          )}
+          {topConseillers.length > 0 && (
+            <RankingSection
+              title="🏆 Top Conseillers territoriaux les mieux notés"
+              elus={topConseillers}
+              setSelectedElu={setSelectedElu}
+              setCurrentScreen={setCurrentScreen}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+if (currentScreen === 'home' || currentScreen === 'communes') {
     return (
       <div className="app-modern">
         {/* Hero Section */}
@@ -2714,6 +2870,8 @@ const importConseillersTerritoriaux = async () => {
             <span>Citoyens</span>
           </div>
         </div>
+
+        
 
         {/* Menu de navigation en bulles */}
         <nav className="menu-bubble-bar">
@@ -2770,6 +2928,16 @@ const importConseillersTerritoriaux = async () => {
             </div>
             CTG
           </button>
+          <button 
+            className={`menu-bubble ${currentScreen === 'popularite' ? 'active' : ''}`}
+            onClick={() => setCurrentScreen('popularite')}
+            data-type="popularite"
+          >
+            <div className="bubble-icon-wrapper">
+              <Star className="bubble-icon" />
+            </div>
+            Popularité
+          </button>
         </nav>
 
         {/* Contenu selon l'onglet sélectionné */}
@@ -2785,43 +2953,129 @@ const importConseillersTerritoriaux = async () => {
                   padding: '2rem',
                   marginBottom: '2rem'
                 }}>
-                  <h2 style={{color: '#e2e8f0', marginBottom: '1rem'}}>🏛️ Choisissez votre commune</h2>
-                  <div className="search-box-modern" style={{
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}>
-                    <Search size={24} style={{
-                      position: 'absolute',
-                      left: '1rem',
-                      color: '#94a3b8'
-                    }} />
-              <input
-                type="text"
-                      placeholder="Rechercher un élu ou une commune..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '1rem 1rem 1rem 3.5rem',
-                        backgroundColor: '#0f172a',
-                        border: '1px solid #334155',
-                        borderRadius: '12px',
-                        color: '#e2e8f0',
-                        fontSize: '1rem'
-                      }}
-              />
-            </div>
-          </div>
+                  {/* En-tête et barre de recherche */}
+                  <div style={{marginBottom: '1.5rem'}}>
+                    <h2 style={{
+                      color: '#e2e8f0',
+                      marginBottom: '1.5rem',
+                      fontSize: '1.5rem',
+                      fontWeight: '700',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem'
+                    }}>
+                      <div style={{
+                        background: 'linear-gradient(135deg, #3b82f6, #10b981)',
+                        borderRadius: '10px',
+                        padding: '0.5rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        <Landmark size={20} style={{color: 'white'}} />
+                      </div>
+                      Choisissez votre commune
+                    </h2>
+                    <div className="search-box-modern" style={{
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}>
+                      <Search size={20} style={{
+                        position: 'absolute',
+                        left: '1rem',
+                        color: '#94a3b8'
+                      }} />
+                      <input
+                        type="text"
+                        placeholder="Rechercher un élu ou une commune..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '0.875rem 1rem 0.875rem 2.75rem',
+                          backgroundColor: '#0f172a',
+                          border: '1px solid #334155',
+                          borderRadius: '12px',
+                          color: '#e2e8f0',
+                          fontSize: '0.9375rem'
+                        }}
+                      />
+                    </div>
+                  </div>
 
-                {/* Header avec statistiques des communes */}
-                <div className="region-filter" style={{marginBottom: '2rem'}}>
-                  <h3 style={{color: '#cbd5e1', marginBottom: '1rem', fontSize: '1.5rem', fontWeight: '700'}}>
-                    🗺️ {communes.length} communes de Guyane française
-                  </h3>
-                  <p style={{color: '#94a3b8', fontSize: '0.875rem', lineHeight: '1.6'}}>
-                    Des communes côtières aux territoires de l'intérieur amazonien
-                  </p>
+                  {/* Informations et tri */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '1rem',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(59, 130, 246, 0.15)'
+                  }}>
+                    {/* Nombre de communes */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem'
+                    }}>
+                      <div style={{
+                        background: 'linear-gradient(135deg, #3b82f6, #10b981)',
+                        borderRadius: '8px',
+                        padding: '0.5rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        <Map size={18} style={{color: 'white'}} />
+                      </div>
+                      <div>
+                        <span style={{
+                          color: '#e2e8f0',
+                          fontSize: '0.9375rem',
+                          fontWeight: '600'
+                        }}>
+                          {communes.length} communes
+                        </span>
+                        <span style={{
+                          color: '#94a3b8',
+                          fontSize: '0.8125rem',
+                          marginLeft: '0.5rem'
+                        }}>
+                          de Guyane française
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Option de tri */}
+                    <div
+                      onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        backgroundColor: 'rgba(30, 41, 59, 0.5)',
+                        border: '1px solid rgba(59, 130, 246, 0.2)',
+                        userSelect: 'none'
+                      }}
+                    >
+                      <Users size={16} style={{color: '#3b82f6'}} />
+                      <span style={{
+                        color: '#94a3b8',
+                        fontSize: '0.8125rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}>
+                        <span style={{color: '#3b82f6'}}>Tri :</span> Population {sortOrder === 'desc' ? '↓' : '↑'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Communes Grid Moderne */}
@@ -2837,6 +3091,11 @@ const importConseillersTerritoriaux = async () => {
                       (commune.description && commune.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
                       (commune.region && commune.region.toLowerCase().includes(searchTerm.toLowerCase()))
                     )
+                    .sort((a, b) => {
+                      const popA = a.population || 0;
+                      const popB = b.population || 0;
+                      return sortOrder === 'desc' ? popB - popA : popA - popB;
+                    })
                     .map((commune) => (
                       <div
                         key={commune.id}
