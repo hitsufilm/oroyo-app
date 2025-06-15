@@ -1,9 +1,66 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ChevronDown, Users, ArrowLeft, Star, MessageCircle, Send, ThumbsUp, MapPin, Download, UserPlus, Home, Building, Crown, Globe2, Scale, Vote, UserCheck, Map, Landmark } from 'lucide-react';
+import { Search, ChevronDown, Users, ArrowLeft, Star, MessageCircle, Send, ThumbsUp, MapPin, Download, UserPlus, Home, Building, Crown, Globe2, Scale, Vote, UserCheck, Map, Landmark, Newspaper } from 'lucide-react';
 import { db } from './firebase';
 import { collection, getDocs, setDoc, doc } from 'firebase/firestore';
 import './AppModern.css';
 
+// SERVICE D'ACTUALITÉS
+const NEWS_API_KEY = process.env.REACT_APP_NEWS_API_KEY;
+const NEWS_BASE_URL = 'https://newsapi.org/v2/everything';
+
+// Service d'actualités simplifié
+const newsService = {
+  async getEluNews(eluName, commune = '') {
+    try {
+      if (!NEWS_API_KEY) {
+        console.error('❌ Clé NewsAPI manquante');
+        return [];
+      }
+
+      // Utiliser une seule requête simple
+      const query = `${eluName} Guyane`;
+      console.log(`🔍 Recherche d'actualités pour: "${query}"`);
+
+      const response = await fetch(
+        `${NEWS_BASE_URL}?q=${encodeURIComponent(query)}&language=fr&sortBy=publishedAt&pageSize=10&apiKey=${NEWS_API_KEY}`
+      );
+
+      console.log('Status de la réponse:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`Erreur API: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Données reçues de l\'API:', data);
+
+      if (!data.articles || data.articles.length === 0) {
+        console.log('Aucun article trouvé dans la réponse');
+        return [];
+      }
+
+      const articles = data.articles
+        .filter(article => article.title && article.description)
+        .slice(0, 5)
+        .map(article => ({
+          id: article.url,
+          title: article.title,
+          description: article.description,
+          url: article.url,
+          publishedAt: new Date(article.publishedAt).toLocaleDateString('fr-FR'),
+          source: article.source?.name || 'Source inconnue',
+          imageUrl: article.urlToImage
+        }));
+
+      console.log('Articles transformés:', articles);
+      return articles;
+
+    } catch (error) {
+      console.error('❌ Erreur lors de la recherche d\'actualités:', error);
+      return [];
+    }
+  }
+};
 // Fonction de tri des élus par note
 const getTopRatedElus = (elusList, limit = 5) => {
   return [...elusList]
@@ -186,6 +243,13 @@ function App() {
   const [message, setMessage] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
 
+  // Charger les actualités quand on accède au profil d'un élu
+  useEffect(() => {
+    if (selectedElu && currentScreen === 'profil') {
+      fetchEluNews(selectedElu.name);
+    }
+  }, [selectedElu, currentScreen]);
+
   // États pour les données
   const [communes, setCommunes] = useState([]);
   const [postes, setPostes] = useState([]);
@@ -198,6 +262,22 @@ function App() {
   const [avisLocaux, setAvisLocaux] = useState([]);
   const [importingElus, setImportingElus] = useState(false);
   const [sortOrder, setSortOrder] = useState('desc'); // 'desc' pour décroissant (par défaut), 'asc' pour croissant
+  const [news, setNews] = useState([]);
+  const [loadingNews, setLoadingNews] = useState(false);
+
+  // Fonction pour récupérer les actualités d'un élu
+  const fetchEluNews = async (eluName) => {
+    setLoadingNews(true);
+    try {
+      const articles = await newsService.getEluNews(eluName, selectedElu?.commune || '');
+      setNews(articles);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des actualités:', error);
+      setNews([]);
+    } finally {
+      setLoadingNews(false);
+    }
+  };
 
   // DONNÉES DES DÉPUTÉS
   const deputesData = [
@@ -2533,6 +2613,15 @@ const importConseillersTerritoriaux = async () => {
   }
 };
   // CHARGEMENT DES DONNÉES
+  // Effet pour charger les actualités quand un élu est sélectionné
+  useEffect(() => {
+    if (selectedElu && currentScreen === 'profil') {
+      fetchEluNews(selectedElu.name);
+    } else {
+      setNews([]);
+    }
+  }, [selectedElu, currentScreen]);
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -4028,6 +4117,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
                 </div>
               </div>
 
+              {/* Section Notes */}
               <div className="rating-section-modern" style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
@@ -4098,6 +4188,127 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
                 ))
             )}
           </div>
+
+            {/* Section Actualités */}
+            <div className="news-section" style={{
+              backgroundColor: '#1e293b',
+              border: '1px solid #334155',
+              borderRadius: '16px',
+              padding: '2rem',
+              marginTop: '2rem'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+                marginBottom: '1.5rem'
+              }}>
+                <Newspaper size={24} style={{ color: '#3b82f6' }} />
+                <h2 style={{
+                  color: '#e2e8f0',
+                  fontSize: '1.5rem',
+                  fontWeight: '600',
+                  margin: 0
+                }}>
+                  Actualités récentes
+                </h2>
+              </div>
+
+              {loadingNews ? (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '2rem',
+                  color: '#94a3b8'
+                }}>
+                  Chargement des actualités...
+                </div>
+              ) : news.length > 0 ? (
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1.5rem'
+                }}>
+                  {news.map((article, index) => (
+                    <a
+                      key={article.id}
+                      href={article.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        textDecoration: 'none',
+                        color: 'inherit',
+                        display: 'block',
+                        padding: '1rem',
+                        backgroundColor: 'rgba(30, 41, 59, 0.5)',
+                        borderRadius: '12px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div style={{
+                        display: 'flex',
+                        gap: '1rem',
+                        alignItems: 'flex-start'
+                      }}>
+                        {article.imageUrl && (
+                          <img
+                            src={article.imageUrl}
+                            alt={article.title}
+                            style={{
+                              width: '120px',
+                              height: '80px',
+                              objectFit: 'cover',
+                              borderRadius: '8px'
+                            }}
+                          />
+                        )}
+                        <div>
+                          <h4 style={{
+                            color: '#e2e8f0',
+                            fontSize: '1rem',
+                            fontWeight: '600',
+                            marginBottom: '0.5rem'
+                          }}>
+                            {article.title}
+                          </h4>
+                          <p style={{
+                            color: '#94a3b8',
+                            fontSize: '0.875rem',
+                            marginBottom: '0.5rem',
+                            display: '-webkit-box',
+                            WebkitLineClamp: '2',
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                          }}>
+                            {article.description}
+                          </p>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            color: '#64748b',
+                            fontSize: '0.75rem'
+                          }}>
+                            <span>{article.source}</span>
+                            <span>•</span>
+                            <span>{article.publishedAt}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '2rem',
+                  color: '#94a3b8',
+                  backgroundColor: 'rgba(30, 41, 59, 0.5)',
+                  borderRadius: '12px'
+                }}>
+                  Aucune actualité récente trouvée pour cet élu.
+                </div>
+              )}
+            </div>
 
             {/* Actions */}
             <div className="actions-section-modern">
