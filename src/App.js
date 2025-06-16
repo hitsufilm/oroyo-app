@@ -7,8 +7,8 @@ import {
 } from 'firebase/auth';
 import './AppModern.css';
 import { useAuth, AuthModal, UserButton } from './components/AuthComponent';
-import EducationPolitique from './components/EducationPolitique';
-import EducationPolitiqueAvancee from './components/EducationPolitiqueAvancee';
+import EducationPolitique from './components/EducationPolitique.js';
+import EducationPolitiqueAvancee from './components/EducationPolitiqueAvancee.js';
 
 // FONCTION UTILITAIRE POUR NORMALISER LES CHAÎNES (enlever accents)
 const normalizeString = (str) => {
@@ -6505,7 +6505,6 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
                   // Fonction de tri hiérarchique OFFICIELLE CTG 2021-2028
                   const getOrderPriority = (conseiller) => {
                     const nom = conseiller.name;
-                    const poste = conseiller.poste || '';
                     
                     // Hiérarchie officielle CTG 2021-2028 - ORDRE EXACT
                     if (nom === 'Gabriel Serville') return 1; // Président CTG
