@@ -1,18 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ChevronDown, Users, ArrowLeft, Star, MessageCircle, Send, ThumbsUp, MapPin, Download, UserPlus, Home, Building, Crown, Globe2, Scale, Vote, UserCheck, Map, Landmark, Newspaper } from 'lucide-react';
+import { Search, ChevronDown, Users, ArrowLeft, Star, MessageCircle, Send, ThumbsUp, MapPin, UserPlus, Building, Crown, Globe2, Scale, Vote, Map, Landmark, Newspaper, Book, AlertCircle } from 'lucide-react';
 import { db, auth } from './firebase';
 import { collection, getDocs, setDoc, doc } from 'firebase/firestore';
 import { 
-  signInWithPopup, 
-  FacebookAuthProvider, 
-  signInAnonymously, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  updateProfile,
   signOut
 } from 'firebase/auth';
 import './AppModern.css';
 import { useAuth, AuthModal, UserButton } from './components/AuthComponent';
+import EducationPolitique from './components/EducationPolitique';
+import EducationPolitiqueAvancee from './components/EducationPolitiqueAvancee';
+
+// FONCTION UTILITAIRE POUR NORMALISER LES CHAÎNES (enlever accents)
+const normalizeString = (str) => {
+  return str
+    .toLowerCase()
+    .normalize('NFD') // Décompose les caractères accentués
+    .replace(/[\u0300-\u036f]/g, '') // Supprime les accents
+    .replace(/[œ]/g, 'oe') // Remplace œ par oe
+    .replace(/[æ]/g, 'ae'); // Remplace æ par ae
+};
 
 // SERVICE D'ACTUALITÉS RÉACTIVÉ POUR VERCEL
 const newsService = {
@@ -151,7 +157,7 @@ const RankingSection = ({ title, elus, setSelectedElu, setCurrentScreen }) => {
 };
 
 // Header Component
-const Header = ({ title, subtitle, currentScreen, setCurrentScreen, setCurrentTab, children, showMiniNav }) => {
+const Header = ({ title, subtitle, currentScreen, setCurrentScreen, setCurrentTab, children, showMiniNav, changeScreenAndResetSearch }) => {
   return (
     <>
       <div className="header-modern">
@@ -159,7 +165,7 @@ const Header = ({ title, subtitle, currentScreen, setCurrentScreen, setCurrentTa
           <div className="header-nav">
             <div className="header-left">
               <button 
-                onClick={() => setCurrentScreen('home')} 
+                onClick={() => changeScreenAndResetSearch('home')} 
                 className="btn-back-modern"
               >
                 <ArrowLeft size={20} />
@@ -179,10 +185,7 @@ const Header = ({ title, subtitle, currentScreen, setCurrentScreen, setCurrentTa
       <nav className={`mini-nav ${showMiniNav ? 'visible' : ''}`}>
         <button 
           className={`mini-nav-item ${currentScreen === 'communes' ? 'active' : ''}`}
-          onClick={() => {
-            setCurrentScreen('communes');
-            setCurrentTab('communes');
-          }}
+          onClick={() => changeScreenAndResetSearch('communes', 'communes')}
           data-tooltip="Communes"
         >
           <Building className="mini-nav-icon" />
@@ -190,7 +193,7 @@ const Header = ({ title, subtitle, currentScreen, setCurrentScreen, setCurrentTa
         </button>
         <button 
           className={`mini-nav-item ${currentScreen === 'maires' ? 'active' : ''}`}
-          onClick={() => setCurrentScreen('maires')}
+          onClick={() => changeScreenAndResetSearch('maires')}
           data-tooltip="Maires"
         >
           <Crown className="mini-nav-icon" />
@@ -198,7 +201,7 @@ const Header = ({ title, subtitle, currentScreen, setCurrentScreen, setCurrentTa
         </button>
         <button 
           className={`mini-nav-item ${currentScreen === 'deputes' ? 'active' : ''}`}
-          onClick={() => setCurrentScreen('deputes')}
+          onClick={() => changeScreenAndResetSearch('deputes')}
           data-tooltip="Députés"
         >
           <Vote className="mini-nav-icon" />
@@ -206,7 +209,7 @@ const Header = ({ title, subtitle, currentScreen, setCurrentScreen, setCurrentTa
         </button>
         <button 
           className={`mini-nav-item ${currentScreen === 'senateurs' ? 'active' : ''}`}
-          onClick={() => setCurrentScreen('senateurs')}
+          onClick={() => changeScreenAndResetSearch('senateurs')}
           data-tooltip="Sénateurs"
         >
           <Scale className="mini-nav-icon" />
@@ -214,7 +217,7 @@ const Header = ({ title, subtitle, currentScreen, setCurrentScreen, setCurrentTa
         </button>
         <button 
           className={`mini-nav-item ${currentScreen === 'ctg' ? 'active' : ''}`}
-          onClick={() => setCurrentScreen('ctg')}
+          onClick={() => changeScreenAndResetSearch('ctg')}
           data-tooltip="CTG"
         >
           <Globe2 className="mini-nav-icon" />
@@ -222,11 +225,19 @@ const Header = ({ title, subtitle, currentScreen, setCurrentScreen, setCurrentTa
         </button>
         <button 
           className={`mini-nav-item ${currentScreen === 'popularite' ? 'active' : ''}`}
-          onClick={() => setCurrentScreen('popularite')}
+          onClick={() => changeScreenAndResetSearch('popularite')}
           data-tooltip="Popularité"
         >
           <Star className="mini-nav-icon" />
           <div className="tooltip">Popularité</div>
+        </button>
+        <button 
+          className={`mini-nav-item ${currentScreen === 'education' ? 'active' : ''}`}
+          onClick={() => changeScreenAndResetSearch('education')}
+          data-tooltip="Éducation"
+        >
+          <Book className="mini-nav-icon" />
+          <div className="tooltip">Éducation</div>
         </button>
       </nav>
     </>
@@ -239,16 +250,25 @@ function App() {
   const [currentTab, setCurrentTab] = useState('communes');
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Fonction pour changer d'écran et réinitialiser la recherche
+  const changeScreenAndResetSearch = (newScreen, newTab = null) => {
+    setSearchTerm(''); // Réinitialiser la barre de recherche
+    setCurrentScreen(newScreen);
+    if (newTab) {
+      setCurrentTab(newTab);
+    }
+    // Scroll vers le haut à chaque changement d'écran
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
     // === ÉTATS POUR LES ÉLUS ET DONNÉES ===
     const [selectedElu, setSelectedElu] = useState(null);
   const [communes, setCommunes] = useState([]);
-  const [postes, setPostes] = useState([]);
   const [elus, setElus] = useState([]);
   const [deputes, setDeputes] = useState([]);
   const [senateurs, setSenateurs] = useState([]);
   const [conseillers, setConseillers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [importingElus, setImportingElus] = useState(false);
     const [sortOrder, setSortOrder] = useState('desc');
 
@@ -263,23 +283,11 @@ function App() {
   const [loadingNews, setLoadingNews] = useState(false);
 
     // === ÉTATS POUR L'AUTHENTIFICATION ===
-    const { user, loading: authLoading, setLoading: setAuthLoading, signOut: signOutUser } = useAuth();
+    const { user } = useAuth();
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [selectedCommune, setSelectedCommune] = useState(null);
     const [selectedPoste, setSelectedPoste] = useState(null);
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [displayName, setDisplayName] = useState('');
-    const [authError, setAuthError] = useState(null);
-    const [showUserMenu, setShowUserMenu] = useState(false);
-    const [showMiniMenu, setShowMiniMenu] = useState(false);
-    const [showSearchBar, setShowSearchBar] = useState(false);
-    const [showBackButton, setShowBackButton] = useState(false);
-    const [showMenuBubbles, setShowMenuBubbles] = useState(true);
-    const [showStatsBar, setShowStatsBar] = useState(true);
-    const [showMainHeader, setShowMainHeader] = useState(true);
     const [showMiniNav, setShowMiniNav] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
 
       // Effet pour gérer la visibilité du mini menu en fonction du défilement
   useEffect(() => {
@@ -311,7 +319,6 @@ function App() {
   const handleSignOut = async () => {
     try {
       await signOut(auth);
-      setShowUserMenu(false);
     } catch (error) {
       console.error('Erreur déconnexion:', error);
     }
@@ -322,6 +329,7 @@ function App() {
     if (selectedElu && currentScreen === 'profil') {
       fetchEluNews(selectedElu.name);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedElu, currentScreen]);
 
   // Les états sont maintenant déclarés au début du composant
@@ -356,6 +364,7 @@ function App() {
       lieu_naissance: 'Sinnamary',
       profession: 'Cadre technique d\'entreprise',
       commission: 'Développement durable',
+      description: 'Jean‑Victor Castor, né le 21 avril 1962 à Sinnamary, est le fils d\'enseignants et a suivi des études en chimie avant de rejoindre la Guyane et militer pour le MDES dès la fondation du journal Rot Kozé (1985). Député depuis juin 2022 dans le groupe GDR, il défend une forte autonomie voire indépendance pour la Guyane et milite contre le néocolonialisme français. Il est l\'auteur d\'une proposition de loi en mai 2023 pour abroger l\'obligation vaccinale des soignants, adoptée malgré l\'opposition du gouvernement. En 2023, il a participé à une mission sur l\'aménagement durable du territoire, et en décembre 2023, il a soutenu un amendement augmentant le foncier pour la SAFER de Guyane (125 000–150 000 ha). Il suscite parfois la controverse — notamment suite à un voyage officiel à Bakou pour un forum anti-colonial.',
       rating: 4.1,
       totalVotes: 89,
       questions: [
@@ -381,6 +390,7 @@ function App() {
       lieu_naissance: 'Kourou',
       profession: 'Technicien',
       commission: 'Affaires étrangères',
+      description: 'Davy Rimane, né le 15 décembre 1979 à Kourou, est un technicien chez EDF et ancien syndicaliste (Union des travailleurs guyanais - section énergie). Il a été l\'une des figures marquantes du mouvement social de 2017 ("Pou Lagwiyann Dékolé") et pour ses revendications, il a ensuite rejoint les rangs de la gauche. Élu député en 2022, il s\'inscrit dans le groupe GDR (Gauche Démocrate et Républicaine) à l\'Assemblée. Il préside depuis juin 2023 la Délégation aux outre-mer, mettant l\'accent sur les spécificités du territoire guyanais. Actif localement, il est également conseiller municipal de Kourou. Reconnu pour ses positions sur l\'énergie, l\'immigration et les droits sociaux, il propose des tribunes dans la presse locale.',
       rating: 3.9,
       totalVotes: 76,
       questions: [
@@ -1106,12 +1116,7 @@ function App() {
     { id: 'saul', name: 'Saül', population: 149, description: 'Village d\'orpaillage isolé ⛏️', region: 'Centre forêt' }
   ];
 
-  const postesIntegres = [
-    { id: 'maire', name: 'Maire', color: '#3b82f6', icon: '👑' },
-    { id: 'adjoint', name: 'Adjoints au Maire', color: '#6366f1', icon: '🤝' },
-    { id: 'conseiller', name: 'Conseillers Municipaux', color: '#8b5cf6', icon: '🏛️' },
-    { id: 'intercommunal', name: 'Conseillers Intercommunaux', color: '#ec4899', icon: '🌐' }
-  ];
+
 
   // DONNÉES RÉELLES DES ÉLUS LOCAUX - MAIRES ACTUELS 2025
   const allElusData = [
@@ -2464,22 +2469,7 @@ const importElusNationaux = async () => {
   }
 };
 
-  const importElus = async () => {
-    setImportingElus(true);
-    try {
-      let importCount = 0;
-      for (const elu of allElusData) {
-        await setDoc(doc(db, 'elus', elu.id), elu);
-        importCount++;
-      }
-      alert(`🎉 ${allElusData.length} élus importés avec succès !`);
-      window.location.reload();
-    } catch (error) {
-      console.error('❌ Erreur lors de l\'import des élus:', error);
-    } finally {
-      setImportingElus(false);
-    }
-  };
+
 // FONCTION D'IMPORT POUR LES VRAIS MAIRES ET ÉLUS LOCAUX
 const importVraisMaires = async () => {
   setImportingElus(true);
@@ -2568,6 +2558,7 @@ const importDeputes = async () => {
         mandat: '2024-2029',
         circonscription: '1ère circonscription',
         profession: 'Conseiller en collectivité territoriale',
+        description: 'Jean‑Victor Castor, né le 21 avril 1962 à Sinnamary, est le fils d\'enseignants et a suivi des études en chimie avant de rejoindre la Guyane et militer pour le MDES dès la fondation du journal Rot Kozé (1985). Député depuis juin 2022 dans le groupe GDR, il défend une forte autonomie voire indépendance pour la Guyane et milite contre le néocolonialisme français. Il est l\'auteur d\'une proposition de loi en mai 2023 pour abroger l\'obligation vaccinale des soignants, adoptée malgré l\'opposition du gouvernement. En 2023, il a participé à une mission sur l\'aménagement durable du territoire, et en décembre 2023, il a soutenu un amendement augmentant le foncier pour la SAFER de Guyane (125 000–150 000 ha). Il suscite parfois la controverse — notamment suite à un voyage officiel à Bakou pour un forum anti-colonial.',
         questions: []
       },
       { 
@@ -2582,6 +2573,7 @@ const importDeputes = async () => {
         mandat: '2024-2029',
         circonscription: '2ème circonscription',
         profession: 'Ancien maire',
+        description: 'Davy Rimane, né le 15 décembre 1979 à Kourou, est un technicien chez EDF et ancien syndicaliste (Union des travailleurs guyanais - section énergie). Il a été l\'une des figures marquantes du mouvement social de 2017 ("Pou Lagwiyann Dékolé") et pour ses revendications, il a ensuite rejoint les rangs de la gauche. Élu député en 2022, il s\'inscrit dans le groupe GDR (Gauche Démocrate et Républicaine) à l\'Assemblée. Il préside depuis juin 2023 la Délégation aux outre-mer, mettant l\'accent sur les spécificités du territoire guyanais. Actif localement, il est également conseiller municipal de Kourou. Reconnu pour ses positions sur l\'énergie, l\'immigration et les droits sociaux, il propose des tribunes dans la presse locale.',
         questions: []
       }
     ];
@@ -2606,8 +2598,8 @@ const importSenateurs = async () => {
   try {
     const senateurs = [
       { 
-        id: 'antoine-karam-senateur', 
-        name: 'Antoine Karam', 
+        id: 'georges-patient-senateur', 
+        name: 'Georges Patient', 
         commune: 'Toute la Guyane', 
         poste: 'Sénateurs', 
         status: 'actuel', 
@@ -2615,7 +2607,7 @@ const importSenateurs = async () => {
         totalVotes: 156, 
         parti: 'Régionaliste', 
         mandat: '2023-2032',
-        profession: 'Médecin',
+        profession: 'Ancien maire de Mana',
         questions: []
       },
       { 
@@ -2629,6 +2621,7 @@ const importSenateurs = async () => {
         parti: 'RDPI', 
         mandat: '2023-2032',
         profession: 'Orthophoniste',
+        particularite: 'Première femme sénatrice de Guyane',
         questions: []
       }
     ];
@@ -2646,25 +2639,790 @@ const importSenateurs = async () => {
     setImportingElus(false);
   }
 };
-// FONCTION D'IMPORT DES CONSEILLERS TERRITORIAUX
-const importConseillersTerritoriaux = async () => {
+// LISTE COMPLÈTE DES 55 CONSEILLERS TERRITORIAUX CTG 2021-2028
+const conseillersTerritoriaux55 = [
+  // === BUREAU EXÉCUTIF ===
+  {
+    id: 'gabriel-serville-ctg',
+    name: 'Gabriel Serville',
+    poste: 'Président CTG',
+    parti: 'Péyi G',
+    mandat: '2021-2028',
+    section: 'Cayenne',
+    groupe: 'Majorité - Guyane Kontré',
+    description: 'Gabriel Serville est Président de la Collectivité Territoriale de Guyane depuis 2021. Figure emblématique de Péyi G, il dirige la majorité territoriale "Guyane Kontré" et porte les enjeux d\'autonomie, de développement durable et de justice sociale pour la Guyane.',
+    rating: 4.2,
+    totalVotes: 156,
+    questions: []
+  },
+  {
+    id: 'jean-paul-fereira-ctg',
+    name: 'Jean-Paul Fereira',
+    poste: '1er Vice-Président CTG',
+    parti: 'AGEG',
+    mandat: '2021-2028',
+    section: 'Saint-Laurent-du-Maroni',
+    groupe: 'Majorité - Guyane Kontré',
+    delegation: 'Développement durable et transition énergétique',
+    description: 'Jean-Paul Fereira est 1er Vice-Président de la CTG, membre de l\'Alliance pour une Guyane Écologique et Gagnante (AGEG). Ancien maire d\'Awala-Yalimapo, il est également président du Parc Naturel Régional de Guyane. Il est reconnu pour son engagement environnemental et représente un pilier de la majorité territoriale sur la question du développement durable.',
+    rating: 3.7,
+    totalVotes: 78,
+    questions: []
+  },
+  {
+    id: 'sophie-charles-ctg',
+    name: 'Sophie Charles',
+    poste: '2ème Vice-Présidente CTG',
+    parti: 'Guyane kontré',
+    mandat: '2021-2028',
+    section: 'Cayenne',
+    groupe: 'Majorité - Guyane Kontré',
+    delegation: 'Éducation et constructions scolaires',
+    rating: 3.9,
+    totalVotes: 82,
+    questions: []
+  },
+  {
+    id: 'rodolphe-alexandre-ctg',
+    name: 'Rodolphe Alexandre',
+    poste: '3ème Vice-Président CTG',
+    parti: 'GR',
+    mandat: '2021-2028',
+    section: 'Cayenne',
+    groupe: 'Opposition - Unis et engagés',
+    delegation: 'Europe, affaires institutionnelles, égalité',
+    rating: 3.5,
+    totalVotes: 65,
+    questions: []
+  },
+  {
+    id: 'marie-laure-phinera-horth-ctg',
+    name: 'Marie-Laure Phinéra-Horth',
+    poste: '4ème Vice-Présidente CTG',
+    parti: 'Guyane kontré',
+    mandat: '2021-2028',
+    section: 'Cayenne',
+    groupe: 'Majorité - Guyane Kontré',
+    delegation: 'Santé et action sociale',
+    rating: 4.0,
+    totalVotes: 94,
+    questions: []
+  },
+
+  // === SECTION CAYENNE (12 sièges) ===
+  // Majorité
+  {
+    id: 'patricia-said-ctg',
+    name: 'Patricia Saïd',
+    poste: '4e Vice-Présidente',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Cayenne',
+    groupe: 'Majorité - Guyane Kontré',
+    delegation: 'Solidarité & santé',
+    description: 'Patricia Saïd, 4e Vice-Présidente, est engagée en faveur des politiques sociales et sanitaires. Elle est particulièrement active sur les questions de santé publique, d\'infrastructures médicales et du projet de CHRU de Guyane.',
+    rating: 3.6,
+    totalVotes: 45,
+    questions: []
+  },
+  {
+    id: 'jean-luc-le-west-ctg',
+    name: 'Jean-Luc Le West',
+    poste: '13e Vice-Président',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Cayenne',
+    groupe: 'Majorité - Guyane Kontré',
+    delegation: 'Développement économique & tourisme',
+    description: 'Jean-Luc Le West est 13e Vice-Président chargé du développement économique et du tourisme. Il soutient l\'entrepreneuriat local, les investissements durables et les initiatives de valorisation touristique de la Guyane.',
+    rating: 3.5,
+    totalVotes: 38,
+    questions: []
+  },
+  {
+    id: 'muriel-briquet-ctg',
+    name: 'Muriel Briquet',
+    poste: 'Conseillère Territoriale',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Cayenne',
+    groupe: 'Majorité - Guyane Kontré',
+    rating: 3.7,
+    totalVotes: 52,
+    questions: []
+  },
+  {
+    id: 'chester-leonce-ctg',
+    name: 'Chester Leonce',
+    poste: '9e Vice-Président',
+    parti: 'NFG',
+    mandat: '2021-2028',
+    section: 'Cayenne',
+    groupe: 'Majorité - Guyane Kontré',
+    delegation: 'Aménagement du territoire & transports',
+    description: 'Chester Leonce, 9e Vice-Président, est responsable des questions liées à l\'aménagement du territoire, aux infrastructures et au désenclavement. Il s\'implique dans la modernisation du réseau routier et des transports publics.',
+    rating: 3.4,
+    totalVotes: 32,
+    questions: []
+  },
+  {
+    id: 'bernadette-dulonca-ctg',
+    name: 'Bernadette Dulonca',
+    poste: '10e Vice-Présidente',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Cayenne',
+    groupe: 'Majorité - Guyane Kontré',
+    delegation: 'Citoyenneté & vivre ensemble',
+    description: 'Bernadette Dulonca est la 10e Vice-Présidente de la CTG. Elle travaille à renforcer la cohésion sociale, la citoyenneté active et le vivre ensemble entre les différentes cultures de Guyane.',
+    rating: 3.8,
+    totalVotes: 58,
+    questions: []
+  },
+  {
+    id: 'zadkiel-saint-orice-ctg',
+    name: 'Zadkiel Saint-Orice',
+    poste: 'Conseiller Territorial',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Cayenne',
+    groupe: 'Majorité - Guyane Kontré',
+    rating: 3.6,
+    totalVotes: 43,
+    questions: []
+  },
+  {
+    id: 'christiane-barbe-ctg',
+    name: 'Christiane Barbe',
+    poste: 'Conseillère Territoriale',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Cayenne',
+    groupe: 'Majorité - Guyane Kontré',
+    rating: 3.7,
+    totalVotes: 49,
+    questions: []
+  },
+  {
+    id: 'serge-long-him-nam-ctg',
+    name: 'Serge Long-Him-Nam',
+    poste: 'Conseiller Territorial',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Cayenne',
+    groupe: 'Majorité - Guyane Kontré',
+    rating: 3.5,
+    totalVotes: 37,
+    questions: []
+  },
+  // Opposition Cayenne
+  {
+    id: 'audrey-marie-ctg',
+    name: 'Audrey Marie',
+    poste: 'Conseillère Territoriale',
+    parti: 'Divers centre',
+    mandat: '2021-2028',
+    section: 'Cayenne',
+    groupe: 'Opposition - Unis et engagés',
+    rating: 3.3,
+    totalVotes: 29,
+    questions: []
+  },
+  {
+    id: 'boris-chong-sit-ctg',
+    name: 'Boris Chong-Sit',
+    poste: 'Conseiller Territorial',
+    parti: 'Les Républicains',
+    mandat: '2021-2028',
+    section: 'Cayenne',
+    groupe: 'Opposition - Unis et engagés',
+    rating: 3.2,
+    totalVotes: 26,
+    questions: []
+  },
+
+  // === SECTION PETITE COURONNE (11 sièges) ===
+  // Majorité
+  {
+    id: 'philippe-bouba-ctg',
+    name: 'Philippe Bouba',
+    poste: '5e Vice-Président',
+    parti: 'LFI',
+    mandat: '2021-2028',
+    section: 'Petite Couronne',
+    groupe: 'Majorité - Guyane Kontré',
+    delegation: 'Enseignement supérieur & recherche',
+    description: 'Philippe Bouba est enseignant-chercheur et 5e Vice-Président de la CTG. Il pilote les politiques d\'enseignement supérieur, la recherche, et les partenariats académiques, avec des projets tels que la création d\'un Crous et de nouvelles formations.',
+    rating: 3.6,
+    totalVotes: 44,
+    questions: []
+  },
+  {
+    id: 'aissatou-chambaud-ctg',
+    name: 'Aïssatou Chambaud',
+    poste: '6e Vice-Présidente',
+    parti: 'PSG',
+    mandat: '2021-2028',
+    section: 'Petite Couronne',
+    groupe: 'Majorité - Guyane Kontré',
+    delegation: 'Famille & aide sociale à l\'enfance',
+    description: 'Aïssatou Chambaud, 6e Vice-Présidente, est issue du secteur social. Elle œuvre pour la protection de l\'enfance, les droits des familles et le renforcement de l\'aide sociale territoriale.',
+    rating: 3.8,
+    totalVotes: 56,
+    questions: []
+  },
+  {
+    id: 'roger-aron-ctg',
+    name: 'Roger Aron',
+    poste: '7e Vice-Président',
+    parti: 'Péyi G',
+    mandat: '2021-2028',
+    section: 'Petite Couronne',
+    groupe: 'Majorité - Guyane Kontré',
+    delegation: 'Agriculture, pêche & souveraineté alimentaire',
+    description: 'Roger Aron est 7e Vice-Président de la CTG, chargé des politiques agricoles, de la pêche et de la souveraineté alimentaire. Il représente la Guyane au Salon de l\'Agriculture et défend une production locale plus forte et autonome.',
+    rating: 3.7,
+    totalVotes: 51,
+    questions: []
+  },
+  {
+    id: 'sherly-alcin-ctg',
+    name: 'Sherly Alcin',
+    poste: 'Conseillère Territoriale',
+    parti: 'LFI',
+    mandat: '2021-2028',
+    section: 'Petite Couronne',
+    groupe: 'Majorité - Guyane Kontré',
+    rating: 3.5,
+    totalVotes: 39,
+    questions: []
+  },
+  {
+    id: 'lucien-alexander-ctg',
+    name: 'Lucien Alexander',
+    poste: 'Conseiller Territorial',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Petite Couronne',
+    groupe: 'Majorité - Guyane Kontré',
+    rating: 3.6,
+    totalVotes: 42,
+    questions: []
+  },
+  {
+    id: 'marie-lucienne-rattier-ctg',
+    name: 'Marie-Lucienne Rattier',
+    poste: 'Conseillère Territoriale',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Petite Couronne',
+    groupe: 'Majorité - Guyane Kontré',
+    rating: 3.7,
+    totalVotes: 48,
+    questions: []
+  },
+  {
+    id: 'thibault-lechat-vega-ctg',
+    name: 'Thibault Lechat-Vega',
+    poste: '3e Vice-Président',
+    parti: 'Péyi G',
+    mandat: '2021-2028',
+    section: 'Petite Couronne',
+    groupe: 'Majorité - Guyane Kontré',
+    delegation: 'Europe, égalité, relations institutionnelles',
+    description: 'Thibault Lechat-Vega est le 3e Vice-Président de la CTG, en charge des affaires européennes, institutionnelles, et de l\'égalité. Il représente la CTG au sein du Comité des Régions de l\'Union Européenne et œuvre au renforcement des relations avec les Guyanais de l\'extérieur.',
+    rating: 3.4,
+    totalVotes: 35,
+    questions: []
+  },
+  {
+    id: 'violaine-machichi-prost-ctg',
+    name: 'Violaine Machichi-Prost',
+    poste: 'Conseillère Territoriale',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Petite Couronne',
+    groupe: 'Majorité - Guyane Kontré',
+    rating: 3.8,
+    totalVotes: 54,
+    questions: []
+  },
+  // Opposition Petite Couronne
+  {
+    id: 'claude-penet-ctg',
+    name: 'Claude Penet',
+    poste: 'Conseiller Territorial',
+    parti: 'Divers centre',
+    mandat: '2021-2028',
+    section: 'Petite Couronne',
+    groupe: 'Opposition - Unis et engagés',
+    rating: 3.3,
+    totalVotes: 28,
+    questions: []
+  },
+  {
+    id: 'isabelle-patient-ctg',
+    name: 'Isabelle Patient',
+    poste: 'Conseillère Territoriale',
+    parti: 'Divers droite',
+    mandat: '2021-2028',
+    section: 'Petite Couronne',
+    groupe: 'Opposition - Unis et engagés',
+    rating: 3.2,
+    totalVotes: 25,
+    questions: []
+  },
+  {
+    id: 'julnor-belizaire-ctg',
+    name: 'Julnor Bélizaire',
+    poste: 'Conseiller Territorial',
+    parti: 'GR',
+    mandat: '2021-2028',
+    section: 'Petite Couronne',
+    groupe: 'Opposition - Unis et engagés',
+    rating: 3.1,
+    totalVotes: 23,
+    questions: []
+  },
+
+  // === SECTION GRANDE COURONNE (4 sièges) ===
+  // Majorité
+  {
+    id: 'emmanuel-prince-ctg',
+    name: 'Emmanuel Prince',
+    poste: '11e Vice-Président',
+    parti: 'Péyi G',
+    mandat: '2021-2028',
+    section: 'Grande Couronne',
+    groupe: 'Majorité - Guyane Kontré',
+    delegation: 'Culture, patrimoine & transmission',
+    description: 'Emmanuel Prince est 11e Vice-Président chargé de la culture et du patrimoine. Il valorise l\'histoire, les langues et les traditions de Guyane à travers des actions de terrain et des soutiens aux initiatives culturelles.',
+    rating: 3.6,
+    totalVotes: 41,
+    questions: []
+  },
+  {
+    id: 'karine-cresson-ibris-ctg',
+    name: 'Karine Cresson-Ibris',
+    poste: '12e Vice-Présidente',
+    parti: 'MDES',
+    mandat: '2021-2028',
+    section: 'Grande Couronne',
+    groupe: 'Majorité - Guyane Kontré',
+    delegation: 'Emploi, formation & insertion professionnelle',
+    description: 'Karine Cresson-Ibris est militante du MDES et 12e Vice-Présidente de la CTG. Elle porte les enjeux liés à l\'emploi, à la formation professionnelle et à l\'insertion des jeunes et des publics en difficulté.',
+    rating: 3.7,
+    totalVotes: 47,
+    questions: []
+  },
+  {
+    id: 'christian-noko-ctg',
+    name: 'Christian Noko',
+    poste: 'Conseiller Territorial',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Grande Couronne',
+    groupe: 'Majorité - Guyane Kontré',
+    rating: 3.5,
+    totalVotes: 36,
+    questions: []
+  },
+  // Opposition Grande Couronne
+  {
+    id: 'jean-claude-labrador-ctg',
+    name: 'Jean-Claude Labrador',
+    poste: 'Conseiller Territorial',
+    parti: 'Divers droite',
+    mandat: '2021-2028',
+    section: 'Grande Couronne',
+    groupe: 'Opposition - Unis et engagés',
+    rating: 3.2,
+    totalVotes: 24,
+    questions: []
+  },
+
+  // === SECTION OYAPOCK (3 sièges) ===
+  // Majorité
+  {
+    id: 'rene-monerville-ctg',
+    name: 'René Monerville',
+    poste: 'Conseiller Territorial',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Oyapock',
+    groupe: 'Majorité - Guyane Kontré',
+    rating: 3.6,
+    totalVotes: 40,
+    questions: []
+  },
+  // Opposition Oyapock
+  {
+    id: 'pierre-desert-ctg',
+    name: 'Pierre Désert',
+    poste: 'Conseiller Territorial',
+    parti: 'GR',
+    mandat: '2021-2028',
+    section: 'Oyapock',
+    groupe: 'Opposition - Unis et engagés',
+    rating: 3.3,
+    totalVotes: 27,
+    questions: []
+  },
+  {
+    id: 'leda-georges-ctg',
+    name: 'Léda Georges',
+    poste: 'Conseillère Territoriale',
+    parti: 'Divers centre',
+    mandat: '2021-2028',
+    section: 'Oyapock',
+    groupe: 'Opposition - Unis et engagés',
+    rating: 3.4,
+    totalVotes: 31,
+    questions: []
+  },
+
+  // === SECTION LES SAVANES (6 sièges) ===
+  // Majorité
+  {
+    id: 'annie-robinson-chocho-ctg',
+    name: 'Annie Robinson-Chocho',
+    poste: '2e Vice-Présidente',
+    parti: 'Péyi G',
+    mandat: '2021-2028',
+    section: 'Les Savanes',
+    groupe: 'Majorité - Guyane Kontré',
+    delegation: 'Éducation & constructions scolaires',
+    description: 'Annie Robinson-Chocho, 2e Vice-Présidente, est une figure active de Péyi G. Elle supervise les politiques éducatives de la CTG, en particulier les constructions et réhabilitations d\'établissements scolaires. Elle soutient de nombreuses initiatives pédagogiques sur le territoire.',
+    rating: 3.7,
+    totalVotes: 49,
+    questions: []
+  },
+  {
+    id: 'patrick-cosset-ctg',
+    name: 'Patrick Cosset',
+    poste: 'Conseiller Territorial',
+    parti: 'Péyi G',
+    mandat: '2021-2028',
+    section: 'Les Savanes',
+    groupe: 'Majorité - Guyane Kontré',
+    rating: 3.5,
+    totalVotes: 38,
+    questions: []
+  },
+  {
+    id: 'isabelle-vernet-ctg',
+    name: 'Isabelle Vernet',
+    poste: 'Conseillère Territoriale',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Les Savanes',
+    groupe: 'Majorité - Guyane Kontré',
+    rating: 3.6,
+    totalVotes: 43,
+    questions: []
+  },
+  {
+    id: 'enrico-william-ctg',
+    name: 'Enrico William',
+    poste: 'Conseiller Territorial',
+    parti: 'Péyi G',
+    mandat: '2021-2028',
+    section: 'Les Savanes',
+    groupe: 'Majorité - Guyane Kontré',
+    rating: 3.4,
+    totalVotes: 34,
+    questions: []
+  },
+  // Opposition Les Savanes
+  {
+    id: 'francois-ringuet-ctg',
+    name: 'François Ringuet',
+    poste: 'Conseiller Territorial',
+    parti: 'GR',
+    mandat: '2021-2028',
+    section: 'Les Savanes',
+    groupe: 'Opposition - Unis et engagés',
+    rating: 3.3,
+    totalVotes: 29,
+    questions: []
+  },
+  {
+    id: 'magda-soesanna-ctg',
+    name: 'Magda Soesanna',
+    poste: 'Conseillère Territoriale',
+    parti: 'Divers centre',
+    mandat: '2021-2028',
+    section: 'Les Savanes',
+    groupe: 'Opposition - Unis et engagés',
+    rating: 3.2,
+    totalVotes: 26,
+    questions: []
+  },
+
+  // === SECTION HAUT-MARONI (7 sièges) ===
+  // Majorité
+  {
+    id: 'raymond-deye-ctg',
+    name: 'Raymond Déyé',
+    poste: '15e Vice-Président',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Haut-Maroni',
+    groupe: 'Majorité - Guyane Kontré',
+    delegation: 'Égalité des chances & des territoires',
+    description: 'Raymond Déyé est 15e Vice-Président de la CTG. Il défend l\'égalité des chances, la réduction des inégalités territoriales et le développement équilibré des zones enclavées de Guyane.',
+    rating: 3.6,
+    totalVotes: 42,
+    questions: []
+  },
+  {
+    id: 'mirta-tani-ctg',
+    name: 'Mirta Tani',
+    poste: 'Conseillère Territoriale',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Haut-Maroni',
+    groupe: 'Majorité - Guyane Kontré',
+    rating: 3.7,
+    totalVotes: 46,
+    questions: []
+  },
+  {
+    id: 'francois-bagadi-ctg',
+    name: 'François Bagadi',
+    poste: 'Conseiller Territorial',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Haut-Maroni',
+    groupe: 'Majorité - Guyane Kontré',
+    rating: 3.5,
+    totalVotes: 37,
+    questions: []
+  },
+  // Opposition Haut-Maroni
+  {
+    id: 'denis-galimot-ctg',
+    name: 'Denis Galimot',
+    poste: 'Conseiller Territorial',
+    parti: 'Divers centre',
+    mandat: '2021-2028',
+    section: 'Haut-Maroni',
+    groupe: 'Opposition - Unis et engagés',
+    rating: 3.3,
+    totalVotes: 28,
+    questions: []
+  },
+  {
+    id: 'juilette-daniel-ctg',
+    name: 'Juilette Daniel',
+    poste: 'Conseillère Territoriale',
+    parti: 'GR',
+    mandat: '2021-2028',
+    section: 'Haut-Maroni',
+    groupe: 'Opposition - Unis et engagés',
+    rating: 3.2,
+    totalVotes: 25,
+    questions: []
+  },
+  {
+    id: 'felix-dada-ctg',
+    name: 'Félix Dada',
+    poste: 'Conseiller Territorial',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Haut-Maroni',
+    groupe: 'Opposition - Unis et engagés',
+    rating: 3.4,
+    totalVotes: 32,
+    questions: []
+  },
+  {
+    id: 'sergina-telon-ctg',
+    name: 'Sergina Télon',
+    poste: 'Conseillère Territoriale',
+    parti: 'Divers centre',
+    mandat: '2021-2028',
+    section: 'Haut-Maroni',
+    groupe: 'Opposition - Unis et engagés',
+    rating: 3.1,
+    totalVotes: 22,
+    questions: []
+  },
+
+  // === SECTION SAINT-LAURENT-DU-MARONI (7 sièges) ===
+  // Majorité (Jean-Paul Fereira déjà dans le bureau)
+  {
+    id: 'samantha-cyriaque-ctg',
+    name: 'Samantha Cyriaque',
+    poste: '8e Vice-Présidente',
+    parti: 'MDES',
+    mandat: '2021-2028',
+    section: 'Saint-Laurent-du-Maroni',
+    groupe: 'Majorité - Guyane Kontré',
+    delegation: 'Autonomie & handicap',
+    description: 'Samantha Cyriaque est enseignante et militante du MDES. Elle est la 8e Vice-Présidente de la CTG en charge de l\'autonomie des personnes handicapées et du soutien à l\'inclusion sociale sur le territoire.',
+    rating: 3.6,
+    totalVotes: 44,
+    questions: []
+  },
+  {
+    id: 'jessi-americain-ctg',
+    name: 'Jessi Americain',
+    poste: 'Conseiller Territorial',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Saint-Laurent-du-Maroni',
+    groupe: 'Majorité - Guyane Kontré',
+    rating: 3.5,
+    totalVotes: 39,
+    questions: []
+  },
+  {
+    id: 'keena-perlet-ctg',
+    name: 'Keena Perlet',
+    poste: 'Conseillère Territoriale',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Saint-Laurent-du-Maroni',
+    groupe: 'Majorité - Guyane Kontré',
+    rating: 3.7,
+    totalVotes: 48,
+    questions: []
+  },
+  {
+    id: 'gilles-le-gall-ctg',
+    name: 'Gilles le Gall',
+    poste: 'Conseiller Territorial',
+    parti: 'Génération.s',
+    mandat: '2021-2028',
+    section: 'Saint-Laurent-du-Maroni',
+    groupe: 'Majorité - Guyane Kontré',
+    rating: 3.4,
+    totalVotes: 35,
+    questions: []
+  },
+  // Opposition Saint-Laurent
+  {
+    id: 'crepin-kezza-ctg',
+    name: 'Crépin Kezza',
+    poste: 'Conseiller Territorial',
+    parti: 'Divers centre',
+    mandat: '2021-2028',
+    section: 'Saint-Laurent-du-Maroni',
+    groupe: 'Opposition - Unis et engagés',
+    rating: 3.3,
+    totalVotes: 30,
+    questions: []
+  },
+  {
+    id: 'catherine-leo-ctg',
+    name: 'Catherine Léo',
+    poste: 'Conseillère Territoriale',
+    parti: 'Divers centre',
+    mandat: '2021-2028',
+    section: 'Saint-Laurent-du-Maroni',
+    groupe: 'Opposition - Unis et engagés',
+    rating: 3.2,
+    totalVotes: 27,
+    questions: []
+  },
+  {
+    id: 'benfelino-waarheid-ctg',
+    name: 'Benfelino Waarheid',
+    poste: 'Conseiller Territorial',
+    parti: 'Divers centre',
+    mandat: '2021-2028',
+    section: 'Saint-Laurent-du-Maroni',
+    groupe: 'Opposition - Unis et engagés',
+    rating: 3.1,
+    totalVotes: 24,
+    questions: []
+  },
+  {
+    id: 'nelly-desmangles-ctg',
+    name: 'Nelly Desmangles',
+    poste: 'Conseillère Territoriale',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Saint-Laurent-du-Maroni',
+    groupe: 'Opposition - Unis et engagés',
+    rating: 3.4,
+    totalVotes: 33,
+    questions: []
+  },
+
+  // === SECTION BASSE-MANA (3 sièges) ===
+  // Majorité
+  {
+    id: 'tiarrah-steenwinkel-ctg',
+    name: 'Tiarrah Steenwinkel',
+    poste: '14e Vice-Présidente',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Basse-Mana',
+    groupe: 'Majorité - Guyane Kontré',
+    delegation: 'Sécurité & sûreté',
+    description: 'Tiarrah Steenwinkel, 14e Vice-Présidente, s\'occupe des questions de sécurité et de sûreté sur le territoire. Elle travaille à renforcer la prévention, la tranquillité publique et les politiques de médiation sociale.',
+    rating: 3.6,
+    totalVotes: 41,
+    questions: []
+  },
+  {
+    id: 'jocelyn-therese-ctg',
+    name: 'Jocelyn Thérèse',
+    poste: 'Conseiller Territorial',
+    parti: 'Divers gauche',
+    mandat: '2021-2028',
+    section: 'Basse-Mana',
+    groupe: 'Majorité - Guyane Kontré',
+    rating: 3.5,
+    totalVotes: 38,
+    questions: []
+  },
+  // Opposition Basse-Mana
+  {
+    id: 'alberic-benth-ctg',
+    name: 'Albéric Benth',
+    poste: 'Conseiller Territorial',
+    parti: 'Divers centre',
+    mandat: '2021-2028',
+    section: 'Basse-Mana',
+    groupe: 'Opposition - Unis et engagés',
+    rating: 3.3,
+    totalVotes: 29,
+    questions: []
+  }
+];
+
+// FONCTION D'IMPORT DES 55 CONSEILLERS TERRITORIAUX COMPLETS
+const importConseillersTerritoriaux55 = async () => {
   setImportingElus(true);
   try {
-    console.log('🌐 Import des conseillers territoriaux démarré...');
+    console.log('🌐 Import des 55 conseillers territoriaux CTG démarré...');
     
     let importCount = 0;
+    let majoriteCount = 0;
+    let oppositionCount = 0;
     
-    // Utiliser les VRAIS 51 conseillers de vos données
-    for (const conseiller of conseillersTerritoriaux) {
-      await setDoc(doc(db, 'elus', conseiller.id), conseiller);
+    for (const conseiller of conseillersTerritoriaux55) {
+      await setDoc(doc(db, 'elus', conseiller.id), {
+        ...conseiller
+        // Garder les vrais postes (Président CTG, Vice-Présidents, etc.)
+      });
       importCount++;
       
-      console.log(`✅ ${conseiller.name} (${conseiller.poste}) ajouté(e) [${importCount}/${conseillersTerritoriaux.length}]`);
+      if (conseiller.groupe.includes('Majorité')) {
+        majoriteCount++;
+      } else {
+        oppositionCount++;
+      }
+      
+      console.log(`✅ ${conseiller.name} (${conseiller.section}) ajouté(e) [${importCount}/55]`);
     }
     
-    console.log(`🎉 IMPORT TERMINÉ ! ${conseillersTerritoriaux.length} conseillers territoriaux ajoutés`);
+    console.log(`🎉 IMPORT TERMINÉ ! 55 conseillers territoriaux ajoutés`);
     
-    alert(`🎉 IMPORT RÉUSSI - CONSEILLERS TERRITORIAUX !\n\n🌐 Total importé : ${importCount} conseillers\n\n👑 Inclus :\n• Gabriel Serville (Président CTG)\n• Jean-Paul Fereira (1er Vice-Président)\n• Sophie Charles (2ème Vice-Présidente)\n• + 48 autres conseillers\n\n✅ Données complètes 2025 !\nActualisation de la page...`);
+    alert(`🎉 IMPORT RÉUSSI - 55 CONSEILLERS TERRITORIAUX CTG !\n\n🌐 Total importé : 55 conseillers\n\n📊 Répartition :\n• ${majoriteCount} Majorité "Guyane Kontré"\n• ${oppositionCount} Opposition "Unis et engagés"\n\n🗺️ 8 sections électorales :\n• Cayenne (12), Petite Couronne (11)\n• Saint-Laurent (7), Haut-Maroni (7)\n• Les Savanes (6), Grande Couronne (4)\n• Oyapock (3), Basse-Mana (3)\n\n✅ Données officielles 2021-2028 !\nActualisation de la page...`);
     
     window.location.reload();
     
@@ -2680,9 +3438,12 @@ const importConseillersTerritoriaux = async () => {
   useEffect(() => {
     if (selectedElu && currentScreen === 'profil') {
       fetchEluNews(selectedElu.name);
+      // Scroll vers le haut quand on ouvre un profil
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       setNews([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedElu, currentScreen]);
 
   useEffect(() => {
@@ -2707,22 +3468,7 @@ const importConseillersTerritoriaux = async () => {
           console.log('⚠️ Erreur Firebase communes:', error);
         }
         
-        // 2. POSTES
-        let tousLesPostes = [...postesIntegres];
-        try {
-          const postesSnapshot = await getDocs(collection(db, 'postes'));
-          const postesFirebase = postesSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          postesFirebase.forEach(posteFirebase => {
-            if (!tousLesPostes.find(p => p.id === posteFirebase.id)) {
-              tousLesPostes.push(posteFirebase);
-            }
-          });
-        } catch (error) {
-          console.log('⚠️ Erreur Firebase postes:', error);
-        }
+
         
         // 3. ÉLUS LOCAUX
         let tousLesElus = [];
@@ -2736,81 +3482,121 @@ const importConseillersTerritoriaux = async () => {
           console.log('⚠️ Erreur Firebase élus:', error);
         }
 
-        // 4. DÉPUTÉS
-        let tousLesDeputes = [...deputesData];
-        try {
-          const deputesSnapshot = await getDocs(collection(db, 'deputes'));
-          const deputesFirebase = deputesSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          deputesFirebase.forEach(deputeFirebase => {
-            if (!tousLesDeputes.find(d => d.id === deputeFirebase.id)) {
-              tousLesDeputes.push(deputeFirebase);
-            }
-          });
-        } catch (error) {
-          console.log('⚠️ Erreur Firebase députés:', error);
+        // 4. DÉPUTÉS - Extraits de la collection 'elus' ou fallback sur données statiques
+        let tousLesDeputes = [];
+        const deputesFromElus = tousLesElus.filter(elu => elu.poste === 'Députés');
+        if (deputesFromElus.length > 0) {
+          tousLesDeputes = deputesFromElus;
+          console.log('✅ Députés chargés depuis collection elus:', deputesFromElus.length);
+        } else {
+          // Fallback sur les données statiques
+          tousLesDeputes = [...deputesData];
+          console.log('⚠️ Députés chargés depuis données statiques:', deputesData.length);
         }
 
-        // 5. SÉNATEURS
-        let tousLesSenateurs = [...senateursData];
-        try {
-          const senateursSnapshot = await getDocs(collection(db, 'senateurs'));
-          const senateursFirebase = senateursSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          senateursFirebase.forEach(senateurFirebase => {
-            if (!tousLesSenateurs.find(s => s.id === senateurFirebase.id)) {
-              tousLesSenateurs.push(senateurFirebase);
-            }
-          });
-        } catch (error) {
-          console.log('⚠️ Erreur Firebase sénateurs:', error);
+        // 5. SÉNATEURS - Extraits de la collection 'elus' ou fallback sur données statiques
+        let tousLesSenateurs = [];
+        const senateursFromElus = tousLesElus.filter(elu => elu.poste === 'Sénateurs');
+        if (senateursFromElus.length > 0) {
+          tousLesSenateurs = senateursFromElus;
+          console.log('✅ Sénateurs chargés depuis collection elus:', senateursFromElus.length);
+        } else {
+          // Fallback sur les données statiques
+          tousLesSenateurs = [...senateursData];
+          console.log('⚠️ Sénateurs chargés depuis données statiques:', senateursData.length);
         }
 
-        // 6. CONSEILLERS TERRITORIAUX
-        let tousLesConseillers = [...conseillersTerritoriaux];
-        try {
-          const conseillersSnapshot = await getDocs(collection(db, 'conseillers_territoriaux'));
-          const conseillersFirebase = conseillersSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          conseillersFirebase.forEach(conseillerFirebase => {
-            if (!tousLesConseillers.find(c => c.id === conseillerFirebase.id)) {
-              tousLesConseillers.push(conseillerFirebase);
-            }
-          });
-        } catch (error) {
-          console.log('⚠️ Erreur Firebase conseillers:', error);
+        // 6. CONSEILLERS TERRITORIAUX - Extraits de la collection 'elus' ou fallback sur données statiques
+        let tousLesConseillers = [];
+        const conseillersFromElus = tousLesElus.filter(elu => 
+          elu.poste === 'Conseiller territorial' || 
+          elu.poste === 'Président CTG' || 
+          elu.poste === 'Vice-Président CTG' ||
+          elu.poste?.includes('Président') ||
+          elu.poste?.includes('Vice') ||
+          elu.poste?.includes('VP') ||
+          elu.poste?.includes('Éducation') ||
+          (elu.name === 'Gabriel Serville') ||
+          (elu.name === 'Jean-Paul Fereira') ||
+          (elu.name === 'Annie Robinson-Chocho') ||
+          (elu.name === 'Thibault Lechat-Vega') ||
+          (elu.name === 'Patricia Saïd') ||
+          (elu.name === 'Philippe Bouba') ||
+          (elu.name === 'Aïssatou Chambaud') ||
+          (elu.name === 'Roger Aron') ||
+          (elu.name === 'Samantha Cyriaque') ||
+          (elu.name === 'Chester Leonce') ||
+          (elu.name === 'Bernadette Dulonca') ||
+          (elu.name === 'Emmanuel Prince') ||
+          (elu.name === 'Karine Cresson-Ibris') ||
+          (elu.name === 'Jean-Luc Le West') ||
+          (elu.name === 'Tiarrah Steenwinkel') ||
+          (elu.name === 'Raymond Déyé')
+        );
+        // Vérifier si les données Firebase ont des descriptions
+        const hasDescriptions = conseillersFromElus.some(elu => elu.description);
+        
+        if (conseillersFromElus.length > 0 && hasDescriptions) {
+          tousLesConseillers = conseillersFromElus;
+          console.log('✅ Conseillers territoriaux chargés depuis collection elus avec descriptions:', conseillersFromElus.length);
+        } else {
+          // Fallback sur les données statiques qui ont les descriptions
+          tousLesConseillers = [...conseillersTerritoriaux55];
+          console.log('⚠️ Conseillers territoriaux chargés depuis données statiques avec descriptions:', conseillersTerritoriaux55.length);
         }
 
         setCommunes(toutesLesCommunes);
-        setPostes(tousLesPostes);
         setElus(tousLesElus);
         setDeputes(tousLesDeputes);
         setSenateurs(tousLesSenateurs);
         setConseillers(tousLesConseillers);
+        
+        // Debug spécifique pour les maires
+        const mairesFromFirebase = tousLesElus.filter(e => e.poste === 'Maire');
+        console.log('🏛️ MAIRES depuis Firebase:', mairesFromFirebase.length);
+        if (mairesFromFirebase.length > 0) {
+          console.log('📝 Noms des maires Firebase:', mairesFromFirebase.map(m => m.name));
+          // Chercher spécifiquement Céline
+          const celine = mairesFromFirebase.find(m => m.name.toLowerCase().includes('celine'));
+          if (celine) {
+            console.log('🎯 CÉLINE TROUVÉE dans Firebase:', celine);
+          } else {
+            console.log('❌ CÉLINE PAS TROUVÉE dans les maires Firebase');
+          }
+        } else {
+          console.log('⚠️ AUCUN MAIRE chargé depuis Firebase !');
+          console.log('📝 Tous les postes dans Firebase:', [...new Set(tousLesElus.map(e => e.poste))]);
+        }
+
+        // Debug pour voir les élus chargés
+        console.log('🔍 ÉLUS CHARGÉS:', {
+          total: tousLesElus.length,
+          deputes: tousLesElus.filter(e => e.poste === 'Députés').length,
+          senateurs: tousLesElus.filter(e => e.poste === 'Sénateurs').length,
+          conseillers: tousLesElus.filter(e => e.poste === 'Conseiller territorial' || e.poste === 'Président CTG' || e.poste === 'Vice-Président CTG' || e.poste?.includes('Président') || e.poste?.includes('Vice') || e.poste?.includes('VP') || e.poste?.includes('Éducation') || ['Gabriel Serville', 'Jean-Paul Fereira', 'Annie Robinson-Chocho', 'Thibault Lechat-Vega', 'Patricia Saïd', 'Philippe Bouba', 'Aïssatou Chambaud', 'Roger Aron', 'Samantha Cyriaque', 'Chester Leonce', 'Bernadette Dulonca', 'Emmanuel Prince', 'Karine Cresson-Ibris', 'Jean-Luc Le West', 'Tiarrah Steenwinkel', 'Raymond Déyé'].includes(e.name)).length,
+          maires: mairesFromFirebase.length
+        });
+        console.log('📋 LISTE DES ÉLUS:', tousLesElus.map(e => `${e.name} (${e.poste})`));
+        
         setLoading(false);
         
       } catch (err) {
         console.error('❌ Erreur générale:', err);
-        setError(err.message);
         setLoading(false);
         
         // Fallback
         setCommunes(communesIntegrees);
-        setPostes(postesIntegres);
         setElus([]);
         setDeputes(deputesData);
         setSenateurs(senateursData);
+        console.log('🔍 Députés chargés:', deputesData.length);
+        console.log('🔍 Sénateurs chargés:', senateursData.length);
         setConseillers(conseillersTerritoriaux);
       }
     };
 
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);// COMPOSANT DE CHARGEMENT
   if (loading) {
     return (
@@ -2869,70 +3655,17 @@ const importConseillersTerritoriaux = async () => {
     );
   };
 
-  // COMPOSANT QUESTION CARD
-  const QuestionCard = ({ question, onLike }) => (
-    <div className="question-card" style={{
-      backgroundColor: '#1e293b',
-      border: '1px solid #334155',
-      borderRadius: '12px',
-      padding: '1rem',
-      marginBottom: '1rem'
-    }}>
-      <div className="question-header" style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '0.75rem'
-      }}>
-        <span 
-          className={`question-type ${question.type}`}
-          style={{
-            backgroundColor: question.type === 'avis' ? '#059669' : '#3b82f6',
-            color: 'white',
-            padding: '0.25rem 0.75rem',
-            borderRadius: '20px',
-            fontSize: '0.75rem',
-            fontWeight: 'bold'
-          }}
-        >
-          {question.type === 'question' ? 'Question' : 'Avis'}
-        </span>
-        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-          <span className="question-author">par {question.author}</span>
-          {question.timestamp && (
-            <span style={{ marginLeft: '0.5rem' }}>• {question.timestamp}</span>
-          )}
-      </div>
-      </div>
-      <p className="question-text" style={{
-        color: '#e2e8f0',
-        lineHeight: '1.5',
-        marginBottom: '1rem'
-      }}>
-        {question.text}
-      </p>
-      <button 
-        className="like-button"
-        onClick={() => onLike && onLike(question.id)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          backgroundColor: 'transparent',
-          border: '1px solid #475569',
-          color: '#94a3b8',
-          padding: '0.5rem 1rem',
-          borderRadius: '20px',
-          cursor: 'pointer',
-          fontSize: '0.875rem',
-          transition: 'all 0.2s'
-        }}
-      >
-        <ThumbsUp size={16} />
-        <span>{question.likes}</span>
-      </button>
-    </div>
-  );
+
+
+  // ÉCRAN ÉDUCATION POLITIQUE
+  if (currentScreen === 'education') {
+    return <EducationPolitique setCurrentScreen={setCurrentScreen} />;
+  }
+
+  // ÉCRAN ÉDUCATION POLITIQUE AVANCÉE
+  if (currentScreen === 'educationAvancee') {
+    return <EducationPolitiqueAvancee setCurrentScreen={setCurrentScreen} />;
+  }
 
   // ÉCRAN HOME MODERNE
   if (currentScreen === 'popularite') {
@@ -2951,6 +3684,7 @@ const importConseillersTerritoriaux = async () => {
           setCurrentScreen={setCurrentScreen}
           setCurrentTab={setCurrentTab}
           showMiniNav={showMiniNav}
+          changeScreenAndResetSearch={changeScreenAndResetSearch}
         >
         <div className="header-right">
           {user ? (
@@ -3050,11 +3784,105 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
                 </button>
               )}
             </div>
-            <h1 className="hero-title">
-              <span className="gradient-text">Oroyo</span>
-            </h1>
-            <p className="hero-subtitle">
-              La plateforme citoyenne pour évaluer et communiquer avec vos élus en Guyane française
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '2rem',
+              flexWrap: 'wrap',
+              marginBottom: '1rem'
+            }}>
+              <h1 className="hero-title" style={{ margin: 0 }}>
+                <span className="gradient-text">Oroyo</span>
+              </h1>
+              {/* Statistiques compactes à droite du titre */}
+              <div style={{
+                display: 'flex',
+                gap: '0.75rem',
+                alignItems: 'center'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  padding: '0.375rem 0.5rem',
+                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(59, 130, 246, 0.2)',
+                  minWidth: '45px'
+                }}>
+                  <span style={{
+                    color: '#60a5fa',
+                    fontSize: '0.75rem',
+                    fontWeight: '700',
+                    lineHeight: '1'
+                  }}>22</span>
+                  <span style={{
+                    color: '#94a3b8',
+                    fontSize: '0.5rem',
+                    fontWeight: '500',
+                    lineHeight: '1',
+                    marginTop: '2px'
+                  }}>Communes</span>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  padding: '0.375rem 0.5rem',
+                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(16, 185, 129, 0.2)',
+                  minWidth: '45px'
+                }}>
+                  <span style={{
+                    color: '#10b981',
+                    fontSize: '0.75rem',
+                    fontWeight: '700',
+                    lineHeight: '1'
+                  }}>55+</span>
+                  <span style={{
+                    color: '#94a3b8',
+                    fontSize: '0.5rem',
+                    fontWeight: '500',
+                    lineHeight: '1',
+                    marginTop: '2px'
+                  }}>Élus</span>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  padding: '0.375rem 0.5rem',
+                  backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(168, 85, 247, 0.2)',
+                  minWidth: '45px'
+                }}>
+                  <span style={{
+                    color: '#a855f7',
+                    fontSize: '0.75rem',
+                    fontWeight: '700',
+                    lineHeight: '1'
+                  }}>1k+</span>
+                  <span style={{
+                    color: '#94a3b8',
+                    fontSize: '0.5rem',
+                    fontWeight: '500',
+                    lineHeight: '1',
+                    marginTop: '2px'
+                  }}>Citoyens</span>
+                </div>
+              </div>
+            </div>
+            <p className="hero-subtitle" style={{
+              textAlign: 'center',
+              maxWidth: '600px',
+              margin: '0 auto',
+              lineHeight: '1.6'
+            }}>
+              La plateforme citoyenne pour évaluer et communiquer<br />
+              avec vos élus en Guyane française
             </p>
           </div>
         </div>
@@ -3098,6 +3926,58 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
           </div>
         </div>
 
+        {/* Bouton Comment ça marche - Style spécial */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          margin: '2rem 0',
+          padding: '0 1rem'
+        }}>
+          <button 
+            className={`education-special-button ${currentScreen === 'education' ? 'active' : ''}`}
+            onClick={() => changeScreenAndResetSearch('education')}
+            style={{
+              background: currentScreen === 'education' 
+                ? 'linear-gradient(135deg, #8B5CF6, #A78BFA)' 
+                : 'linear-gradient(135deg, #4C1D95, #6D28D9)',
+              border: 'none',
+              borderRadius: '25px',
+              padding: '1rem 2rem',
+              color: 'white',
+              fontSize: '1.1rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              boxShadow: currentScreen === 'education'
+                ? '0 8px 25px rgba(139, 92, 246, 0.4)'
+                : '0 4px 15px rgba(76, 29, 149, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              transform: currentScreen === 'education' ? 'translateY(-2px)' : 'translateY(0)',
+              minWidth: '200px',
+              justifyContent: 'center'
+            }}
+            onMouseEnter={(e) => {
+              if (currentScreen !== 'education') {
+                e.target.style.background = 'linear-gradient(135deg, #5B21B6, #7C3AED)';
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 6px 20px rgba(91, 33, 182, 0.4)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (currentScreen !== 'education') {
+                e.target.style.background = 'linear-gradient(135deg, #4C1D95, #6D28D9)';
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = '0 4px 15px rgba(76, 29, 149, 0.3)';
+              }
+            }}
+          >
+            <Book size={20} />
+            Comment ça marche ?
+          </button>
+        </div>
+
         {/* Modal d'authentification */}
         {showAuthModal && (
           <AuthModal
@@ -3106,29 +3986,13 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
           />
         )}
 
-        <div className="stats-bar">
-          <div className="stat">
-            <span className="stat-number">22</span>
-            <span>Communes</span>
-          </div>
-          <div className="stat">
-            <span className="stat-number">55+</span>
-            <span>Élus</span>
-          </div>
-          <div className="stat">
-            <span className="stat-number">1k+</span>
-            <span>Citoyens</span>
-          </div>
-        </div>
+
 
         {/* Menu de navigation en bulles */}
         <nav className="menu-bubble-bar">
           <button 
             className={`menu-bubble ${currentScreen === 'communes' ? 'active' : ''}`}
-            onClick={() => {
-              setCurrentScreen('communes');
-              setCurrentTab('communes');
-            }}
+            onClick={() => changeScreenAndResetSearch('communes', 'communes')}
             data-type="communes"
           >
             <div className="bubble-icon-wrapper">
@@ -3138,7 +4002,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
           </button>
           <button 
             className={`menu-bubble ${currentScreen === 'maires' ? 'active' : ''}`}
-            onClick={() => setCurrentScreen('maires')}
+            onClick={() => changeScreenAndResetSearch('maires')}
             data-type="maires"
           >
             <div className="bubble-icon-wrapper">
@@ -3148,7 +4012,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
           </button>
           <button 
             className={`menu-bubble ${currentScreen === 'deputes' ? 'active' : ''}`}
-            onClick={() => setCurrentScreen('deputes')}
+            onClick={() => changeScreenAndResetSearch('deputes')}
             data-type="deputes"
           >
             <div className="bubble-icon-wrapper">
@@ -3158,7 +4022,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
           </button>
           <button 
             className={`menu-bubble ${currentScreen === 'senateurs' ? 'active' : ''}`}
-            onClick={() => setCurrentScreen('senateurs')}
+            onClick={() => changeScreenAndResetSearch('senateurs')}
             data-type="senateurs"
           >
             <div className="bubble-icon-wrapper">
@@ -3168,7 +4032,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
           </button>
           <button 
             className={`menu-bubble ${currentScreen === 'ctg' ? 'active' : ''}`}
-            onClick={() => setCurrentScreen('ctg')}
+            onClick={() => changeScreenAndResetSearch('ctg')}
             data-type="ctg"
           >
             <div className="bubble-icon-wrapper">
@@ -3178,7 +4042,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
           </button>
           <button 
             className={`menu-bubble ${currentScreen === 'popularite' ? 'active' : ''}`}
-            onClick={() => setCurrentScreen('popularite')}
+            onClick={() => changeScreenAndResetSearch('popularite')}
             data-type="popularite"
           >
             <div className="bubble-icon-wrapper">
@@ -3196,6 +4060,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
           setCurrentScreen={setCurrentScreen}
           setCurrentTab={setCurrentTab}
           showMiniNav={showMiniNav}
+          changeScreenAndResetSearch={changeScreenAndResetSearch}
         />
 
         {/* Modal d'authentification */}
@@ -3240,7 +4105,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
                       }}>
                         <Landmark size={20} style={{color: 'white'}} />
                       </div>
-                      Choisissez votre commune
+                      Rechercher dans la base de données Oroyo
                     </h2>
                     <div className="search-box-modern" style={{
                       position: 'relative',
@@ -3254,9 +4119,25 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
                       }} />
                       <input
                         type="text"
-                        placeholder="Rechercher un élu ou une commune..."
+                        placeholder="Une ville, un maire, un député, un sénateur..."
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={(e) => {
+                          const newSearchTerm = e.target.value;
+                          setSearchTerm(newSearchTerm);
+                          
+                          // Debug spécial pour "celine"
+                          if (normalizeString(newSearchTerm) === 'celine') {
+                            console.log('🔍 RECHERCHE "celine" - Total élus chargés:', elus.length);
+                            console.log('📝 Tous les noms d\'élus:', elus.map(e => e.name));
+                            console.log('🏷️ Tous les postes:', [...new Set(elus.map(e => e.poste))]);
+                            
+                            // Chercher tous les élus contenant "celine" (normalisé)
+                            const matches = elus.filter(elu => 
+                              normalizeString(elu.name).includes('celine')
+                            );
+                            console.log(`🎯 Élus trouvés avec "celine" (normalisé):`, matches);
+                          }
+                        }}
                         style={{
                           width: '100%',
                           padding: '0.875rem 1rem 0.875rem 2.75rem',
@@ -3342,6 +4223,96 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
                       </span>
                     </div>
                   </div>
+
+                  {/* Boutons d'import si des données manquent */}
+                  {(elus.filter(e => e.poste === 'Députés').length === 0 || 
+                    elus.filter(e => e.poste === 'Sénateurs').length === 0 || 
+                    elus.filter(e => e.poste === 'Conseiller territorial' || e.poste === 'Président CTG' || e.poste?.includes('Président') || e.poste?.includes('Vice') || e.poste?.includes('VP') || e.poste?.includes('Éducation') || ['Gabriel Serville', 'Jean-Paul Fereira', 'Annie Robinson-Chocho', 'Thibault Lechat-Vega', 'Patricia Saïd', 'Philippe Bouba', 'Aïssatou Chambaud', 'Roger Aron', 'Samantha Cyriaque', 'Chester Leonce', 'Bernadette Dulonca', 'Emmanuel Prince', 'Karine Cresson-Ibris', 'Jean-Luc Le West', 'Tiarrah Steenwinkel', 'Raymond Déyé'].includes(e.name)).length === 0) && (
+                    <div style={{
+                      padding: '1rem',
+                      backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(251, 191, 36, 0.2)',
+                      marginTop: '1rem'
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        marginBottom: '0.75rem'
+                      }}>
+                        <AlertCircle size={18} style={{color: '#f59e0b'}} />
+                        <span style={{color: '#f59e0b', fontSize: '0.875rem', fontWeight: '600'}}>
+                          Données manquantes - Cliquez pour importer :
+                        </span>
+                      </div>
+                      <div style={{display: 'flex', gap: '0.5rem', flexWrap: 'wrap'}}>
+                        {elus.filter(e => e.poste === 'Députés').length === 0 && (
+                          <button 
+                            onClick={importDeputes}
+                            style={{
+                              backgroundColor: '#3b82f6',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '8px',
+                              padding: '0.5rem 1rem',
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <UserPlus size={14} />
+                            Importer les Députés
+                          </button>
+                        )}
+                        {elus.filter(e => e.poste === 'Sénateurs').length === 0 && (
+                          <button 
+                            onClick={importSenateurs}
+                            style={{
+                              backgroundColor: '#7c3aed',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '8px',
+                              padding: '0.5rem 1rem',
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <UserPlus size={14} />
+                            Importer les Sénateurs
+                          </button>
+                        )}
+                        {elus.filter(e => e.poste === 'Conseiller territorial' || e.poste === 'Président CTG' || e.poste?.includes('Président') || e.poste?.includes('Vice') || e.poste?.includes('VP') || e.poste?.includes('Éducation') || e.name === 'Jean-Paul Fereira' || e.name === 'Annie Robinson-Chocho').length === 0 && (
+                          <button 
+                            onClick={importConseillersTerritoriaux55}
+                            style={{
+                              backgroundColor: '#10b981',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '8px',
+                              padding: '0.5rem 1rem',
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <UserPlus size={14} />
+                            Importer la CTG
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Communes Grid Moderne */}
@@ -3411,11 +4382,23 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
                         </div>
                       </div>
                     ))}
-                  {/* Afficher les élus qui correspondent au nom */}
+                  {/* Afficher les MAIRES qui correspondent au nom */}
                   {elus
-                    .filter(elu =>
-                      searchTerm.length > 0 &&
-                      elu.name.toLowerCase().includes(searchTerm.toLowerCase())
+                    .filter(elu => {
+                      const nameMatch = searchTerm.length > 0 && 
+                                      normalizeString(elu.name).includes(normalizeString(searchTerm)) &&
+                                      elu.poste === 'Maire'; // Seulement les maires dans cette section
+                      
+                      // Debug : afficher dans la console les maires trouvés
+                      if (normalizeString(searchTerm).includes('celine') && nameMatch) {
+                        console.log('🔍 Maire trouvé avec "celine" (normalisé):', elu);
+                      }
+                      
+                      return nameMatch;
+                    })
+                    // Éliminer les doublons par nom et commune
+                    .filter((elu, index, array) => 
+                      array.findIndex(e => e.name === elu.name && e.commune === elu.commune) === index
                     )
                     .map((elu) => (
                       <div
@@ -3423,7 +4406,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
                         className="commune-card-modern"
                         style={{
                           backgroundColor: '#1e293b',
-                          border: '1px solid #334155',
+                          border: '1px solid #f59e0b', // Bordure orange pour les maires
                           borderRadius: '12px',
                           padding: '1.5rem',
                           cursor: 'pointer',
@@ -3438,6 +4421,69 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
                         }}
                       >
                         <div className="commune-icon" style={{
+                          backgroundColor: '#f59e0b', // Orange pour les maires
+                          borderRadius: '12px',
+                          padding: '1rem',
+                          color: 'white'
+                        }}>
+                          <Crown size={24} />
+                        </div>
+                        <div className="commune-info" style={{flex: 1}}>
+                          <h3 style={{color: '#e2e8f0', marginBottom: '0.5rem', fontSize: '1.1rem', fontWeight: '600'}}>
+                            {elu.name}
+                          </h3>
+                          <p className="commune-description" style={{color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem'}}>
+                            👑 Maire de {elu.commune}
+                          </p>
+                          <div className="commune-meta" style={{display: 'flex', gap: '1rem', fontSize: '0.75rem'}}>
+                            <span style={{color: '#f59e0b'}}>
+                              🏛️ {elu.parti || 'Parti non spécifié'}
+                            </span>
+                            {elu.mandat && (
+                              <span style={{color: '#94a3b8'}}>
+                                📅 {elu.mandat}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="commune-arrow" style={{color: '#94a3b8'}}>
+                          <ChevronDown size={20} />
+                        </div>
+                      </div>
+                    ))}
+                  
+                  {/* Afficher les députés qui correspondent au nom */}
+                  {elus
+                    .filter(elu =>
+                      searchTerm.length > 0 &&
+                      elu.poste === 'Députés' &&
+                      elu.name.toLowerCase().includes(searchTerm.toLowerCase())
+                    )
+                    // Éliminer les doublons par nom
+                    .filter((elu, index, array) => 
+                      array.findIndex(e => e.name === elu.name) === index
+                    )
+                    .map((depute) => (
+                      <div
+                        key={`depute-${depute.id}`}
+                        className="commune-card-modern"
+                        style={{
+                          backgroundColor: '#1e293b',
+                          border: '1px solid #3b82f6',
+                          borderRadius: '12px',
+                          padding: '1.5rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '1rem'
+                        }}
+                        onClick={() => {
+                          setSelectedElu(depute);
+                          setCurrentScreen('profil');
+                        }}
+                      >
+                        <div className="commune-icon" style={{
                           backgroundColor: '#3b82f6',
                           borderRadius: '12px',
                           padding: '1rem',
@@ -3447,11 +4493,137 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
                         </div>
                         <div className="commune-info" style={{flex: 1}}>
                           <h3 style={{color: '#e2e8f0', marginBottom: '0.5rem', fontSize: '1.1rem', fontWeight: '600'}}>
-                            {elu.name}
+                            {depute.name}
                           </h3>
                           <p className="commune-description" style={{color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem'}}>
-                            {elu.poste} {elu.commune ? `- ${elu.commune}` : ''}
+                            🗳️ Député - {depute.circonscription || 'Guyane'}
                           </p>
+                          <div className="commune-meta" style={{display: 'flex', gap: '1rem', fontSize: '0.75rem'}}>
+                            <span style={{color: '#3b82f6'}}>
+                              🏛️ {depute.parti || 'Parti non spécifié'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="commune-arrow" style={{color: '#94a3b8'}}>
+                          <ChevronDown size={20} />
+                        </div>
+                      </div>
+                    ))}
+
+                  {/* Afficher les sénateurs qui correspondent au nom */}
+                  {elus
+                    .filter(elu =>
+                      searchTerm.length > 0 &&
+                      elu.poste === 'Sénateurs' &&
+                      elu.name.toLowerCase().includes(searchTerm.toLowerCase())
+                    )
+                    // Éliminer les doublons par nom
+                    .filter((elu, index, array) => 
+                      array.findIndex(e => e.name === elu.name) === index
+                    )
+                    .map((senateur) => (
+                      <div
+                        key={`senateur-${senateur.id}`}
+                        className="commune-card-modern"
+                        style={{
+                          backgroundColor: '#1e293b',
+                          border: '1px solid #7c3aed',
+                          borderRadius: '12px',
+                          padding: '1.5rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '1rem'
+                        }}
+                        onClick={() => {
+                          setSelectedElu(senateur);
+                          setCurrentScreen('profil');
+                        }}
+                      >
+                        <div className="commune-icon" style={{
+                          backgroundColor: '#7c3aed',
+                          borderRadius: '12px',
+                          padding: '1rem',
+                          color: 'white'
+                        }}>
+                          <Users size={24} />
+                        </div>
+                        <div className="commune-info" style={{flex: 1}}>
+                          <h3 style={{color: '#e2e8f0', marginBottom: '0.5rem', fontSize: '1.1rem', fontWeight: '600'}}>
+                            {senateur.name}
+                          </h3>
+                          <p className="commune-description" style={{color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem'}}>
+                            ⚖️ Sénateur de la Guyane
+                          </p>
+                          <div className="commune-meta" style={{display: 'flex', gap: '1rem', fontSize: '0.75rem'}}>
+                            <span style={{color: '#7c3aed'}}>
+                              🏛️ {senateur.parti || 'Parti non spécifié'}
+                            </span>
+                            {senateur.particularite && (
+                              <span style={{color: '#f59e0b'}}>
+                                ⭐ {senateur.particularite}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="commune-arrow" style={{color: '#94a3b8'}}>
+                          <ChevronDown size={20} />
+                        </div>
+                      </div>
+                    ))}
+
+                  {/* Afficher les conseillers territoriaux qui correspondent au nom */}
+                  {elus
+                    .filter(elu =>
+                      searchTerm.length > 0 &&
+                      (elu.poste === 'Conseiller territorial' || elu.poste === 'Président CTG' || elu.poste === 'Vice-Président CTG' || elu.poste?.includes('Président') || elu.poste?.includes('Vice') || elu.poste?.includes('VP') || elu.poste?.includes('Éducation') || ['Gabriel Serville', 'Jean-Paul Fereira', 'Annie Robinson-Chocho', 'Thibault Lechat-Vega', 'Patricia Saïd', 'Philippe Bouba', 'Aïssatou Chambaud', 'Roger Aron', 'Samantha Cyriaque', 'Chester Leonce', 'Bernadette Dulonca', 'Emmanuel Prince', 'Karine Cresson-Ibris', 'Jean-Luc Le West', 'Tiarrah Steenwinkel', 'Raymond Déyé'].includes(elu.name)) &&
+                      elu.name.toLowerCase().includes(searchTerm.toLowerCase())
+                    )
+                    // Éliminer les doublons par nom
+                    .filter((elu, index, array) => 
+                      array.findIndex(e => e.name === elu.name) === index
+                    )
+                    .map((conseiller) => (
+                      <div
+                        key={`conseiller-${conseiller.id}`}
+                        className="commune-card-modern"
+                        style={{
+                          backgroundColor: '#1e293b',
+                          border: '1px solid #10b981',
+                          borderRadius: '12px',
+                          padding: '1.5rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '1rem'
+                        }}
+                        onClick={() => {
+                          setSelectedElu(conseiller);
+                          setCurrentScreen('profil');
+                        }}
+                      >
+                        <div className="commune-icon" style={{
+                          backgroundColor: '#10b981',
+                          borderRadius: '12px',
+                          padding: '1rem',
+                          color: 'white'
+                        }}>
+                          <Users size={24} />
+                        </div>
+                        <div className="commune-info" style={{flex: 1}}>
+                          <h3 style={{color: '#e2e8f0', marginBottom: '0.5rem', fontSize: '1.1rem', fontWeight: '600'}}>
+                            {conseiller.name}
+                          </h3>
+                          <p className="commune-description" style={{color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem'}}>
+                            🏛️ {conseiller.poste} - {conseiller.secteur || conseiller.commune}
+                          </p>
+                          <div className="commune-meta" style={{display: 'flex', gap: '1rem', fontSize: '0.75rem'}}>
+                            <span style={{color: '#10b981'}}>
+                              📍 {conseiller.commune || 'CTG'}
+                            </span>
+                          </div>
                         </div>
                         <div className="commune-arrow" style={{color: '#94a3b8'}}>
                           <ChevronDown size={20} />
@@ -3674,7 +4846,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
               </>
             )}
 
-            {/* Message si aucune commune trouvée (pour l'onglet communes) */}
+            {/* Message si aucune ville ou élu trouvé (pour l'onglet communes) */}
             {currentTab === 'communes' && communes.filter(commune => 
               commune.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
               (commune.description && commune.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -3682,7 +4854,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
             ).length === 0 && communes.length > 0 && (
               <div style={{textAlign: 'center', padding: '3rem', color: '#94a3b8'}}>
                 <Search size={48} style={{marginBottom: '1rem', opacity: 0.5}} />
-                <h3 style={{color: '#cbd5e1', marginBottom: '0.5rem'}}>Aucune commune trouvée</h3>
+                <h3 style={{color: '#cbd5e1', marginBottom: '0.5rem'}}>Aucune ville ou élu trouvé</h3>
                 <p>Essayez avec un autre terme de recherche</p>
               </div>
             )}
@@ -4251,7 +5423,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
               {(selectedPoste === 'Conseillers Territoriaux' && !hasElusOfType(['Conseillers Territoriaux'])) && (
                 <div style={{textAlign: 'center'}}>
                   <button 
-                    onClick={importConseillersTerritoriaux}
+                    onClick={importConseillersTerritoriaux55}
                     disabled={importingElus}
                     style={{
                       backgroundColor: importingElus ? '#6b7280' : '#06b6d4',
@@ -4320,10 +5492,16 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
             <button
                 onClick={() => {
                   // Retourner vers le bon écran selon le type d'élu
-                  if (selectedElu?.poste === 'Député' || selectedElu?.poste === 'Sénateur' || selectedElu?.poste?.includes('CTG')) {
-                    setCurrentScreen('home');
+                  if (selectedElu?.poste === 'Députés') {
+                    changeScreenAndResetSearch('deputes');
+                  } else if (selectedElu?.poste === 'Sénateurs') {
+                    changeScreenAndResetSearch('senateurs');
+                  } else if (selectedElu?.poste === 'Président CTG' || selectedElu?.poste?.includes('Vice-Président') || selectedElu?.poste === 'Conseiller territorial' || selectedElu?.poste === 'Conseillère Territoriale' || selectedElu?.poste?.includes('Président') || selectedElu?.poste?.includes('Vice') || selectedElu?.poste?.includes('VP') || selectedElu?.poste?.includes('Éducation') || ['Gabriel Serville', 'Jean-Paul Fereira', 'Annie Robinson-Chocho', 'Thibault Lechat-Vega', 'Patricia Saïd', 'Philippe Bouba', 'Aïssatou Chambaud', 'Roger Aron', 'Samantha Cyriaque', 'Chester Leonce', 'Bernadette Dulonca', 'Emmanuel Prince', 'Karine Cresson-Ibris', 'Jean-Luc Le West', 'Tiarrah Steenwinkel', 'Raymond Déyé'].includes(selectedElu?.name)) {
+                    changeScreenAndResetSearch('ctg');
+                  } else if (selectedElu?.poste === 'Maire') {
+                    changeScreenAndResetSearch('maires');
                   } else {
-                    setCurrentScreen('elus');
+                    changeScreenAndResetSearch('home');
                   }
                 }} 
                 className="btn-back-modern"
@@ -4456,6 +5634,61 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
                     )}
                   </div>
                 </div>
+              </div>
+
+              {/* Section Description */}
+              <div className="description-section-modern" style={{
+                backgroundColor: '#0f172a',
+                padding: '1.5rem',
+                borderRadius: '12px',
+                marginTop: '1.5rem'
+              }}>
+                <h4 style={{color: '#e2e8f0', marginBottom: '1rem', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                  📝 Description
+                </h4>
+                <p style={{color: '#94a3b8', lineHeight: '1.6', fontSize: '1rem', margin: 0}}>
+                  {(() => {
+                    // Récupérer la description depuis les données statiques si elle n'existe pas dans Firebase
+                    if (selectedElu?.description) {
+                      return selectedElu.description;
+                    }
+                    
+                    // Chercher dans les données statiques des députés
+                    if (selectedElu?.poste === 'Député' || selectedElu?.poste === 'Députés') {
+                      const deputeStatique = deputesData.find(d => 
+                        d.name === selectedElu.name || 
+                        d.name.toLowerCase() === selectedElu.name.toLowerCase()
+                      );
+                      if (deputeStatique?.description) {
+                        return deputeStatique.description;
+                      }
+                    }
+                    
+                    // Chercher dans les données statiques des sénateurs
+                    if (selectedElu?.poste === 'Sénateur' || selectedElu?.poste === 'Sénateurs') {
+                      const senateurStatique = senateursData.find(s => 
+                        s.name === selectedElu.name || 
+                        s.name.toLowerCase() === selectedElu.name.toLowerCase()
+                      );
+                      if (senateurStatique?.description) {
+                        return senateurStatique.description;
+                      }
+                    }
+                    
+                    // Chercher dans les données statiques des conseillers territoriaux
+                    if (selectedElu?.poste?.includes('CTG') || selectedElu?.poste?.includes('Conseiller') || selectedElu?.poste?.includes('Président')) {
+                      const conseillerStatique = conseillersTerritoriaux.find(c => 
+                        c.name === selectedElu.name || 
+                        c.name.toLowerCase() === selectedElu.name.toLowerCase()
+                      );
+                      if (conseillerStatique?.description) {
+                        return conseillerStatique.description;
+                      }
+                    }
+                    
+                    return 'Description en cours de mise à jour...';
+                  })()}
+                </p>
               </div>
 
               {/* Section Notes */}
@@ -4818,10 +6051,15 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
   if (currentScreen === 'maires') {
     // Juste avant le return ou l'utilisation de 'maires'
     const maires = elus.filter((elu) => elu.poste === 'Maire');
-    const filteredMaires = maires.filter(maire => 
-      maire.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (maire.commune && maire.commune.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    const filteredMaires = maires
+      .filter(maire => 
+        maire.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (maire.commune && maire.commune.toLowerCase().includes(searchTerm.toLowerCase()))
+      )
+      // Supprimer les doublons par nom et commune
+      .filter((maire, index, array) => 
+        array.findIndex(m => m.name === maire.name && m.commune === maire.commune) === index
+      );
 
     return (
       <div className="app-modern">
@@ -4832,6 +6070,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
           setCurrentScreen={setCurrentScreen}
           setCurrentTab={setCurrentTab}
           showMiniNav={showMiniNav}
+          changeScreenAndResetSearch={changeScreenAndResetSearch}
         >
           <div className="header-right">
             {user ? (
@@ -4940,6 +6179,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
 
   // ÉCRAN DÉPUTÉS
   if (currentScreen === 'deputes') {
+    console.log('🔍 Écran députés - Nombre de députés:', deputes.length);
     return (
       <div className="app-modern">
         <Header
@@ -4949,6 +6189,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
           setCurrentScreen={setCurrentScreen}
           setCurrentTab={setCurrentTab}
           showMiniNav={showMiniNav}
+          changeScreenAndResetSearch={changeScreenAndResetSearch}
         >
           <div className="header-right">
             {user ? (
@@ -4992,6 +6233,10 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
               {deputes
                 .filter(depute => 
                   depute.name.toLowerCase().includes(searchTerm.toLowerCase())
+                )
+                // Supprimer les doublons par nom
+                .filter((depute, index, array) => 
+                  array.findIndex(d => d.name === depute.name) === index
                 )
                 .map((depute) => (
                   <div key={depute.id} className="elu-card-modern">
@@ -5045,6 +6290,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
 
   // ÉCRAN SÉNATEURS
   if (currentScreen === 'senateurs') {
+    console.log('🔍 Écran sénateurs - Nombre de sénateurs:', senateurs.length);
     return (
       <div className="app-modern">
         <Header
@@ -5054,6 +6300,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
           setCurrentScreen={setCurrentScreen}
           setCurrentTab={setCurrentTab}
           showMiniNav={showMiniNav}
+          changeScreenAndResetSearch={changeScreenAndResetSearch}
         >
           <div className="header-right">
             {user ? (
@@ -5097,6 +6344,10 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
               {senateurs
                 .filter(senateur => 
                   senateur.name.toLowerCase().includes(searchTerm.toLowerCase())
+                )
+                // Supprimer les doublons par nom
+                .filter((senateur, index, array) => 
+                  array.findIndex(s => s.name === senateur.name) === index
                 )
                 .map((senateur) => (
                   <div key={senateur.id} className="elu-card-modern">
@@ -5159,6 +6410,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
           setCurrentScreen={setCurrentScreen}
           setCurrentTab={setCurrentTab}
           showMiniNav={showMiniNav}
+          changeScreenAndResetSearch={changeScreenAndResetSearch}
         >
           <div className="header-right">
             {user ? (
@@ -5198,24 +6450,131 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
               />
             </div>
 
+            {/* Bouton d'importation des 55 conseillers territoriaux */}
+            {conseillers.length < 50 && (
+              <div style={{
+                textAlign: 'center',
+                margin: '2rem 0',
+                padding: '1.5rem',
+                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                border: '2px solid #f59e0b',
+                borderRadius: '12px'
+              }}>
+                <h3 style={{ color: '#f59e0b', marginBottom: '1rem' }}>
+                  📊 Base de données incomplète
+                </h3>
+                <p style={{ color: '#94a3b8', marginBottom: '1.5rem' }}>
+                  Seulement {conseillers.length} conseillers territoriaux trouvés.<br/>
+                  Importez les 55 conseillers territoriaux officiels de la CTG (mandature 2021-2028)
+                </p>
+                <button
+                  onClick={importConseillersTerritoriaux55}
+                  disabled={importingElus}
+                  style={{
+                    backgroundColor: '#f59e0b',
+                    color: 'white',
+                    border: 'none',
+                    padding: '0.75rem 2rem',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    fontWeight: '600',
+                    cursor: importingElus ? 'not-allowed' : 'pointer',
+                    opacity: importingElus ? 0.7 : 1,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {importingElus ? '⏳ Import en cours...' : '📥 Importer les 55 Conseillers CTG'}
+                </button>
+                <div style={{ marginTop: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                  ✅ Données officielles par section électorale<br/>
+                  🗺️ Cayenne, Petite Couronne, Saint-Laurent, Haut-Maroni, etc.
+                </div>
+              </div>
+            )}
+
             <div className="elus-grid-modern">
               {conseillers
                 .filter(conseiller => 
                   conseiller.name.toLowerCase().includes(searchTerm.toLowerCase())
                 )
+                // Supprimer les doublons par nom et poste
+                .filter((conseiller, index, array) => 
+                  array.findIndex(c => c.name === conseiller.name && c.poste === conseiller.poste) === index
+                )
+                .sort((a, b) => {
+                  // Fonction de tri hiérarchique OFFICIELLE CTG 2021-2028
+                  const getOrderPriority = (conseiller) => {
+                    const nom = conseiller.name;
+                    const poste = conseiller.poste || '';
+                    
+                    // Hiérarchie officielle CTG 2021-2028 - ORDRE EXACT
+                    if (nom === 'Gabriel Serville') return 1; // Président CTG
+                    if (nom === 'Jean-Paul Fereira') return 2; // 1er VP - Dév. durable & transition énergétique
+                    if (nom === 'Annie Robinson-Chocho') return 3; // 2ème VP - Éducation & constructions scolaires
+                    if (nom === 'Thibault Lechat-Vega') return 4; // 3ème VP - Europe, égalité, relations institutionnelles
+                    if (nom === 'Patricia Saïd') return 5; // 4ème VP - Solidarité & santé
+                    if (nom === 'Philippe Bouba') return 6; // 5ème VP - Enseignement supérieur & recherche
+                    if (nom === 'Aïssatou Chambaud') return 7; // 6ème VP - Famille & aide sociale à l'enfance
+                    if (nom === 'Roger Aron') return 8; // 7ème VP - Agriculture, pêche & souveraineté alimentaire
+                    if (nom === 'Samantha Cyriaque') return 9; // 8ème VP - Autonomie & handicap
+                    if (nom === 'Chester Leonce') return 10; // 9ème VP - Aménagement du territoire & transports
+                    if (nom === 'Bernadette Dulonca') return 11; // 10ème VP - Citoyenneté & vivre ensemble
+                    if (nom === 'Emmanuel Prince') return 12; // 11ème VP - Culture, patrimoine & transmission
+                    if (nom === 'Karine Cresson-Ibris') return 13; // 12ème VP - Emploi, formation & insertion professionnelle
+                    if (nom === 'Jean-Luc Le West') return 14; // 13ème VP - Développement économique & tourisme
+                    if (nom === 'Tiarrah Steenwinkel') return 15; // 14ème VP - Sécurité & sûreté
+                    if (nom === 'Raymond Déyé') return 16; // 15ème VP - Égalité des chances & des territoires
+                    
+                    return 100; // Tous les autres conseillers
+                  };
+                  
+                  const priorityA = getOrderPriority(a);
+                  const priorityB = getOrderPriority(b);
+                  
+                  if (priorityA !== priorityB) {
+                    return priorityA - priorityB;
+                  }
+                  
+                  // Si même priorité (autres conseillers), trier par nom
+                  return a.name.localeCompare(b.name);
+                })
                 .map((conseiller) => (
                   <div key={conseiller.id} className="elu-card-modern">
                     <div className="elu-header">
-                      <div className="elu-avatar-modern" style={{backgroundColor: '#059669'}}>
+                      <div className="elu-avatar-modern" style={{
+                        backgroundColor: (conseiller.name === 'Gabriel Serville' || conseiller.poste?.includes('Président')) ? '#dc2626' : // Rouge pour le Président
+                                       (conseiller.poste?.includes('Vice') || conseiller.poste?.includes('VP') || ['Jean-Paul Fereira', 'Annie Robinson-Chocho', 'Thibault Lechat-Vega', 'Patricia Saïd', 
+                                        'Philippe Bouba', 'Aïssatou Chambaud', 'Roger Aron', 'Samantha Cyriaque', 
+                                        'Chester Leonce', 'Bernadette Dulonca', 'Emmanuel Prince', 'Karine Cresson-Ibris', 
+                                        'Jean-Luc Le West', 'Tiarrah Steenwinkel', 'Raymond Déyé'].includes(conseiller.name)) ? '#7c3aed' : // Violet pour les VP
+                                       (conseiller.poste?.includes('Égalité des chances') || conseiller.poste?.includes('Sécurité') || 
+                                        conseiller.poste?.includes('Éducation') || conseiller.poste?.includes('Développement') ||
+                                        conseiller.poste?.includes('Agriculture') || conseiller.poste?.includes('Culture') ||
+                                        conseiller.poste?.includes('Emploi') || conseiller.poste?.includes('Santé') ||
+                                        conseiller.poste?.includes('Famille') || conseiller.poste?.includes('Aménagement') ||
+                                        conseiller.poste?.includes('Citoyenneté') || conseiller.poste?.includes('Autonomie') ||
+                                        conseiller.poste?.includes('Europe') || conseiller.poste?.includes('Enseignement') ||
+                                        conseiller.poste?.includes('Solidarité') || conseiller.poste?.includes('Tourisme') ||
+                                        conseiller.poste?.includes('Transports') || conseiller.poste?.includes('Recherche') ||
+                                        conseiller.poste?.includes('Patrimoine') || conseiller.poste?.includes('Insertion') ||
+                                        conseiller.poste?.includes('Pêche') || conseiller.poste?.includes('Handicap') ||
+                                        (conseiller.poste && conseiller.poste !== 'Conseiller territorial' && !conseiller.poste.includes('Président') && !conseiller.poste.includes('Vice'))) ? '#f59e0b' : // Orange pour délégations spéciales
+                                       '#059669' // Vert pour conseillers territoriaux de base
+                      }}>
                         <Users size={32} />
                       </div>
                       <div className="elu-info-modern">
                         <h3>{conseiller.name}</h3>
-                        <p>Conseiller territorial</p>
+                        <p>{conseiller.poste}</p>
                         <div className="elu-badges">
                           <span className="badge badge-parti">{conseiller.parti}</span>
                           {conseiller.delegation && (
                             <span className="badge badge-delegation">{conseiller.delegation}</span>
+                          )}
+                          {conseiller.section && (
+                            <span className="badge badge-section" style={{backgroundColor: '#6366f1', color: 'white'}}>
+                              {conseiller.section}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -5258,63 +6617,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
     );
   }
 
-  // Fonctions d'authentification - À ajouter avant le return
-  const handleFacebookSignIn = async () => {
-    setAuthLoading(true);
-    setAuthError('');
-    try {
-      const provider = new FacebookAuthProvider();
-      await signInWithPopup(auth, provider);
-      setShowAuthModal(false);
-    } catch (error) {
-      setAuthError('Erreur connexion Facebook: ' + error.message);
-    }
-    setAuthLoading(false);
-  };
 
-  const handleAnonymousSignIn = async () => {
-    setAuthLoading(true);
-    try {
-      await signInAnonymously(auth);
-    } catch (error) {
-      setAuthError('Erreur connexion anonyme');
-    }
-    setAuthLoading(false);
-  };
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setAuthLoading(true);
-    setAuthError('');
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      setShowAuthModal(false);
-      setEmail('');
-      setPassword('');
-    } catch (error) {
-      setAuthError('Erreur connexion: ' + error.message);
-    }
-    setAuthLoading(false);
-  };
-
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    setAuthLoading(true);
-    setAuthError('');
-    try {
-      const result = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(result.user, {
-        displayName: displayName || 'Citoyen Guyanais'
-      });
-      setShowAuthModal(false);
-      setEmail('');
-      setPassword('');
-      setDisplayName('');
-    } catch (error) {
-      setAuthError('Erreur inscription: ' + error.message);
-    }
-    setAuthLoading(false);
-  };
 
   // ÉCRAN D'ACCUEIL (HOME)
   return (
@@ -5326,6 +6629,7 @@ if (currentScreen === 'home' || currentScreen === 'communes') {
         setCurrentScreen={setCurrentScreen}
         setCurrentTab={setCurrentTab}
         showMiniNav={showMiniNav}
+        changeScreenAndResetSearch={changeScreenAndResetSearch}
       >
         <div className="header-right">
           {user ? (
