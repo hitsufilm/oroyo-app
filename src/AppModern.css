@@ -259,6 +259,19 @@ body {
   color: var(--glow-color);
 }
 
+.mini-nav-item:nth-child(7) {
+  --glow-color: #8B5CF6;
+}
+
+.mini-nav-item:nth-child(7):hover,
+.mini-nav-item:nth-child(7).active {
+  color: var(--glow-color);
+}
+
+.mini-nav-item:nth-child(7) .mini-nav-icon {
+  color: var(--glow-color);
+}
+
 .mini-nav-item::before {
   content: '';
   position: absolute;
@@ -612,6 +625,26 @@ body {
 .menu-bubble[data-type="popularite"].active .bubble-icon-wrapper {
   box-shadow: 0 0 20px rgba(252, 211, 77, 0.4);
   border-color: #FCD34D;
+}
+
+/* Éducation style */
+.menu-bubble[data-type="education"] {
+  color: #8B5CF6;
+}
+
+.menu-bubble[data-type="education"] .bubble-icon-wrapper {
+  border: 2px solid #8B5CF6;
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
+}
+
+.menu-bubble[data-type="education"] .bubble-icon {
+  color: #8B5CF6;
+}
+
+.menu-bubble[data-type="education"]:hover .bubble-icon-wrapper,
+.menu-bubble[data-type="education"].active .bubble-icon-wrapper {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+  border-color: #8B5CF6;
 }
 
 /* Animation for icons */
@@ -2014,5 +2047,15 @@ p, span, div {
 
   .mini-nav-item:nth-child(6) .tooltip::after {
     border-top: 6px solid #FCD34D;
+  }
+
+  /* Éducation - Nouveau style pour le tooltip */
+  .mini-nav-item:nth-child(7) .tooltip {
+    background-color: #8B5CF6;
+    color: white;
+  }
+
+  .mini-nav-item:nth-child(7) .tooltip::after {
+    border-top: 6px solid #8B5CF6;
   }
 } 
