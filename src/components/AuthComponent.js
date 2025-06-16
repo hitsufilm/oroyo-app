@@ -12,7 +12,7 @@ import {
   updateProfile
 } from 'firebase/auth';
 import { auth } from '../firebase'; // Correction du chemin d'importation
-import { User, Mail, Lock, Eye, EyeOff, LogOut, UserPlus } from 'lucide-react';
+import { User, Mail, Eye, EyeOff, LogOut, UserPlus } from 'lucide-react';
 
 // === COMPOSANT MODAL D'AUTHENTIFICATION ===
 const AuthModal = ({ showAuthModal, setShowAuthModal, onAuthSuccess, onClose, onSuccess }) => {
