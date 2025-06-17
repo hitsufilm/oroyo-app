@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Book, Users, Building, Crown, Globe2, Scale, Vote, ChevronRight, ChevronDown, Award, Target, Calendar, MapPin } from 'lucide-react';
-import '../EducationPolitique.css';
 
 const EducationPolitique = ({ setCurrentScreen }) => {
   const [activeSection, setActiveSection] = useState('overview');
