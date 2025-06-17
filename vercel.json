@@ -2,19 +2,12 @@
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "build",
-  "routes": [
+  "installCommand": "npm install",
+  "framework": "create-react-app",
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
-  ],
-  "build": {
-    "env": {
-      "GENERATE_SOURCEMAP": "false"
-    }
-  }
+  ]
 } 
