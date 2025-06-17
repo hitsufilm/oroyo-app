@@ -12,11 +12,6 @@
       "dest": "/index.html"
     }
   ],
-  "functions": {
-    "pages/api/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "build": {
     "env": {
       "GENERATE_SOURCEMAP": "false"
